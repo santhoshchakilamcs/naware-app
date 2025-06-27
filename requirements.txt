@@ -1,0 +1,29 @@
+# openai
+# streamlit
+
+# python-docx
+# langchain
+# langchain-community
+# #pip install langchain-community; 
+# langchain-openai>=0.0.2
+# unstructured[all-docs]
+# Torch
+# sentence-transformers
+# transformers
+
+# #faiss-gpu
+# faiss-cpu
+
+
+streamlit
+openai
+python-docx
+langchain
+langchain-openai
+langchain-community
+faiss-cpu
+python-dotenv
+requests
+pandas
+unstructured[all-docs]
+PyPDF2
