@@ -1,85 +1,3 @@
-# # combined_app.py
-
-# import os
-# import openai
-# import streamlit as st
-
-# # ─── Import your three app‐modules ────────────────────────────────────────────
-# from Investor_update import render_investor_ui
-# from Newsletter import render_newsletter_ui
-# from test import render_followup_ui  # rename if needed
-
-# # ─── PAGE CONFIG ─────────────────────────────────────────────────────────────
-# st.set_page_config(
-#     page_title="Naware Multi-App Hub",
-#     page_icon="📰✉️📈",
-#     layout="wide",
-# )
-
-# # inject a bit of custom CSS
-# st.markdown("""
-#     <style>
-#       /* make the sidebar header purple */
-#       .css-1d391kg .css-1d391kg {
-#         background: linear-gradient(135deg, #5A2A83 0%, #7C3AED 100%);
-#       }
-#       /* customize the block titles */
-#       h1, h2, h3 {
-#         color: #E83E8C !important;
-#       }
-#       /* tweak buttons to use pink outline */
-#       button[kind="primary"] {
-#         border: 2px solid #E83E8C !important;
-#       }
-#       /* link colors */
-#       a {
-#         color: #FF80AB !important;
-#       }
-#     </style>
-# """, unsafe_allow_html=True)
-
-# # ─── SHARED DEFAULTS ─────────────────────────────────────────────────────────
-# DEFAULTS = {
-#     "openai_api_key": os.getenv("OPENAI_API_KEY", "sk-svcacct-r3g8u1HTW-ixDqI5HW7JMgW3g1_qemT5h313pXChv05WH6hTgEF28BEwcCEJUghT3BlbkFJ5mI1Sb4EhsooE3f_V-9Aw7dJeZxpVOvjc52u2L9tdW6LryRShTI0mUDqoksUUAA"),
-#     "pipedrive_domain": os.getenv("PIPEDRIVE_DOMAIN", "Naware"),
-#     "pipedrive_api_token": os.getenv("PIPEDRIVE_API_TOKEN", "01f15a31881505c1271820bdb31b15d1041d6a26"),
-#     "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
-#     "smtp_port": os.getenv("SMTP_PORT", "587"),
-#     "email_username": os.getenv("EMAIL_USERNAME", "santhosh@naware.io"),
-#     "email_password": os.getenv("EMAIL_PASSWORD", "nkwk ruty bwfk jhop"),
-#     "email_sender_name": os.getenv("EMAIL_SENDER_NAME", "Team Naware"),
-#     "selected_model" : "gpt-4o-mini",
-# }
-
-# for k, v in DEFAULTS.items():
-#     st.session_state.setdefault(k, v)
-
-# openai.api_key = st.session_state.openai_api_key
-
-# # ─── APP SELECTOR ─────────────────────────────────────────────────────────────
-# st.sidebar.title("🚀 App Navigator")
-# app_choice = st.sidebar.selectbox(
-#     "Choose an app:",
-#     [
-#         "Investor Update",
-#         "Newsletter Generator",
-#         "Demo Follow-Up Emails"
-#     ]
-# )
-
-# # ─── DISPATCH ────────────────────────────────────────────────────────────────
-# if app_choice == "Investor Update":
-#     render_investor_ui()
-
-# elif app_choice == "Newsletter Generator":
-#     render_newsletter_ui()
-
-# elif app_choice == "Demo Follow-Up Emails":
-#     render_followup_ui()
-
-
-# combined_app.py
-
 from test import render_followup_ui  # rename if needed
 from Newsletter import render_newsletter_ui
 from Investor_update import render_investor_ui
@@ -230,19 +148,19 @@ st.markdown("""
 
 
 DEFAULTS = {
-    "openai_api_key": os.getenv("OPENAI_API_KEY"),
-    "pipedrive_domain": os.getenv("PIPEDRIVE_DOMAIN", "Naware"),
-    "pipedrive_api_token": os.getenv("PIPEDRIVE_API_TOKEN"),
-    "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
-    "smtp_port": os.getenv("SMTP_PORT", "587"),
-    "email_username": os.getenv("EMAIL_USERNAME"),
-    "email_password": os.getenv("EMAIL_PASSWORD"),
-    "email_sender_name": os.getenv("EMAIL_SENDER_NAME", "Team Naware"),
+    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+    "PIPEDRIVE_DOMAIN": os.getenv("PIPEDRIVE_DOMAIN", "Naware"),
+    "PIPEDRIVE_API_TOKEN": os.getenv("PIPEDRIVE_API_TOKEN"),
+    "SMTP_SERVER": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
+    "SMTP_PORT": os.getenv("SMTP_PORT", "587"),
+    "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME"),
+    "EMAIL_PASSWORD": os.getenv("EMAIL_PASSWORD"),
+    "EMAIL_SENDER_NAME": os.getenv("EMAIL_SENDER_NAME", "Team Naware"),
     "selected_model": "gpt-4o-mini",
 }
 
 for k, v in DEFAULTS.items():
-    if v is None and k in ["openai_api_key", "pipedrive_api_token", "email_username", "email_password"]:
+    if v is None and k in ["OPENAI_API_KEY", "PIPEDRIVE_API_TOKEN", "EMAIL_USERNAME", "EMAIL_PASSWORD"]:
         st.error(f"Missing required environment variable: {k}")
         st.stop()
     st.session_state.setdefault(k, v)
