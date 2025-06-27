@@ -78,11 +78,12 @@
 #     render_followup_ui()
 
 
-
 # combined_app.py
 
+from test import render_followup_ui  # rename if needed
+from Newsletter import render_newsletter_ui
+from Investor_update import render_investor_ui
 import os
-import openai
 import streamlit as st
 
 from dotenv import load_dotenv
@@ -90,9 +91,6 @@ load_dotenv()
 
 
 # ─── Import your three app‐modules ────────────────────────────────────────────
-from Investor_update import render_investor_ui
-from Newsletter import render_newsletter_ui
-from test import render_followup_ui  # rename if needed
 
 # ─── PAGE CONFIG ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -108,13 +106,13 @@ st.markdown("""
       .stApp {
         background: linear-gradient(135deg, #3D1A78 0%, #6B2C91 50%, #4A1E87 100%) !important;
       }
-      
+
       /* Sidebar styling */
       .css-1d391kg {
         background: linear-gradient(180deg, #4A1E87 0%, #3D1A78 100%) !important;
         border-right: 2px solid #FF4081 !important;
       }
-      
+
       /* Main content area */
       .main .block-container {
         background: rgba(77, 30, 135, 0.1) !important;
@@ -122,13 +120,13 @@ st.markdown("""
         border: 1px solid rgba(255, 64, 129, 0.2) !important;
         backdrop-filter: blur(10px) !important;
       }
-      
+
       /* Headers and titles */
       h1, h2, h3, h4, h5, h6 {
         color: #FF4081 !important;
         text-shadow: 0 0 10px rgba(255, 64, 129, 0.3) !important;
       }
-      
+
       /* Sidebar title special styling */
       .css-1d391kg h1 {
         color: #FFFFFF !important;
@@ -138,7 +136,7 @@ st.markdown("""
         -webkit-text-fill-color: transparent !important;
         background-clip: text !important;
       }
-      
+
       /* Buttons */
       .stButton > button {
         background: linear-gradient(45deg, #FF4081, #E91E63) !important;
@@ -148,72 +146,72 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(255, 64, 129, 0.4) !important;
         transition: all 0.3s ease !important;
       }
-      
+
       .stButton > button:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 6px 20px rgba(255, 64, 129, 0.6) !important;
       }
-      
+
       /* Selectbox and inputs */
       .stSelectbox > div > div {
         background-color: rgba(74, 30, 135, 0.8) !important;
         border: 1px solid #FF4081 !important;
         color: white !important;
       }
-      
+
       .stTextInput > div > div > input {
         background-color: rgba(74, 30, 135, 0.8) !important;
         border: 1px solid #FF4081 !important;
         color: white !important;
       }
-      
+
       .stTextArea > div > div > textarea {
         background-color: rgba(74, 30, 135, 0.8) !important;
         border: 1px solid #FF4081 !important;
         color: white !important;
       }
-      
+
       /* Links */
       a {
         color: #FF4081 !important;
         text-decoration: none !important;
       }
-      
+
       a:hover {
         color: #E91E63 !important;
         text-shadow: 0 0 5px rgba(255, 64, 129, 0.5) !important;
       }
-      
+
       /* Success/info boxes */
       .stSuccess {
         background: linear-gradient(45deg, rgba(255, 64, 129, 0.1), rgba(233, 30, 99, 0.1)) !important;
         border-left: 4px solid #FF4081 !important;
       }
-      
+
       .stInfo {
         background: linear-gradient(45deg, rgba(74, 30, 135, 0.2), rgba(107, 44, 145, 0.2)) !important;
         border-left: 4px solid #6B2C91 !important;
       }
-      
+
       /* Metrics and dataframes */
       .metric-container {
         background: rgba(74, 30, 135, 0.3) !important;
         border: 1px solid rgba(255, 64, 129, 0.3) !important;
         border-radius: 10px !important;
       }
-      
+
       /* Expander */
       .streamlit-expanderHeader {
         background: rgba(74, 30, 135, 0.5) !important;
         border: 1px solid #FF4081 !important;
         color: white !important;
       }
-      
+
       /* Progress bars */
       .stProgress > div > div > div {
         background: linear-gradient(45deg, #FF4081, #E91E63) !important;
       }
-      
+
       /* Custom glow effect for important elements */
       .css-1d391kg .css-1d391kg::before {
         content: '';
@@ -250,9 +248,6 @@ for k, v in DEFAULTS.items():
     st.session_state.setdefault(k, v)
 
 
-
-
-
 # ─── APP SELECTOR WITH ENHANCED STYLING ─────────────────────────────────────────
 st.sidebar.title("🚀 Naware App Hub")
 st.sidebar.markdown("---")
@@ -271,7 +266,7 @@ app_choice = st.sidebar.selectbox(
     "Choose an application:",
     [
         "📊 Investor Update",
-        "📰 Newsletter Generator", 
+        "📰 Newsletter Generator",
         "📧 Demo Follow-Up Emails"
     ]
 )

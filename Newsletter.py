@@ -1,172 +1,3 @@
-# import os
-# import streamlit as st
-# from datetime import datetime
-# import tempfile
-# import re
-# from docx import Document
-# from docx.enum.text import WD_ALIGN_PARAGRAPH
-# import openai
-# from langchain_community.document_loaders import DirectoryLoader
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# #from langchain_community.embeddings import OpenAIEmbeddings
-# from langchain_community.vectorstores import FAISS
-# #from langchain_community.chat_models import ChatOpenAI
-# from langchain.chains import RetrievalQA
-
-# from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-
-# from dotenv import load_dotenv
-# load_dotenv()
-
-
-# def render_newsletter_ui():
-#     # --- Configuration ---
-#     # st.set_page_config(
-#     #     page_title="Naware Newsletter Generator",
-#     #     page_icon="📰",
-#     #     layout="wide"
-#     # )
-#     # OpenAI key
-#     openai.api_key = os.getenv("OPENAI_API_KEY")
-
-#     # Paths and constants
-#     COMPANY_DOC = os.getenv("COMPANY_DOC", "./newsletter/")
-#     LENGTH_MAP = {"Short": "150-200 words", "Medium": "300-400 words", "Long": "500-600 words"}
-#     STYLE_EXAMPLE = (
-#         "Roller-Coaster Highlights from the Week:\n"
-#         ":tools: The Wipe-All Beast: This version is all about brute force...\n"
-#         ":robot: Gen6's Glow-Up: Gen6 has been busy...\n"
-#         ":chipmunk: Field Testing Adventures: Let's just say..."
-#     )
-
-#     # --- RAG Engine Initialization ---
-
-#     @st.cache_resource
-#     def load_rag_engine(path, temperature):
-#         if not os.path.isdir(path):
-#             st.error(f"Company document folder not found at '{path}'. Please set COMPANY_DOC correctly.")
-#             st.stop()
-#         # Load documents (DOCX, PDF, TXT)
-#         loader = DirectoryLoader(path, glob='**/*')
-#         docs = loader.load()
-#         # Split into chunks
-#         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-#         chunks = splitter.split_documents(docs)
-#         # Create embeddings + vector store
-#         try:
-#             embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"))
-#             vectorstore = FAISS.from_documents(chunks, embeddings)
-#             # Setup LLM and RetrievalQA
-#             llm = ChatOpenAI(model_name='gpt-4o-mini', temperature=temperature, api_key=os.getenv("OPENAI_API_KEY"))
-#             return RetrievalQA.from_chain_type(llm=llm, chain_type='stuff', retriever=vectorstore.as_retriever())
-#         except Exception as e:
-#             st.error(f"Failed to initialize RAG engine: {e}")
-#             st.stop()
-    
-#     # @st.cache_resource
-#     # def load_rag_engine(path, temperature):
-#     #     if not os.path.isdir(path):
-#     #         st.error(f"Company document folder not found at '{path}'. Please set COMPANY_DOC_PATH correctly.")
-#     #         st.stop()
-#     #     # Load documents (DOCX, PDF, TXT)
-#     #     loader = DirectoryLoader(path, glob='**/*')
-#     #     docs = loader.load()
-#     #     # Split into chunks
-#     #     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-#     #     chunks = splitter.split_documents(docs)
-#     #     # Create embeddings + vector store
-#     #     embeddings = OpenAIEmbeddings(openai_api_key=openai.api_key)
-#     #     vectorstore = FAISS.from_documents(chunks, embeddings)
-#     #     # Setup LLM and RetrievalQA
-#     #     llm = ChatOpenAI(model_name='gpt-4o-mini', temperature=temperature, openai_api_key=openai.api_key)
-#     #     return RetrievalQA.from_chain_type(llm=llm, chain_type='stuff', retriever=vectorstore.as_retriever())
-
-#     # Sidebar settings
-#     st.sidebar.header("Configuration")
-#     temperature = st.sidebar.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
-#     article_length = st.sidebar.select_slider("Article Length", ["Short", "Medium", "Long"], "Medium")
-#     company_name = st.sidebar.text_input("Company Name", "Naware")
-#     newsletter_date = st.sidebar.date_input("Newsletter Date", datetime.now())
-
-#     # Initialize RAG engine once
-#     rag_chain = load_rag_engine(COMPANY_DOC, temperature)
-
-#     # --- Main UI ---
-#     st.title("📰 Naware Newsletter Generator")
-#     st.markdown("Generate context-rich, humorous newsletters using your company docs and OpenAI.")
-
-#     # Topic entry management
-#     if 'topics' not in st.session_state:
-#         st.session_state['topics'] = []
-
-#     st.header("Newsletter Topics")
-#     with st.form(key='topic_form', clear_on_submit=True):
-#         new_topic = st.text_input("Enter a topic")
-#         if st.form_submit_button("Add Topic") and new_topic.strip():
-#             st.session_state['topics'].append(new_topic.strip())
-
-#     for idx, topic in enumerate(st.session_state['topics']):
-#         st.session_state['topics'][idx] = st.text_input(
-#             f"Topic {idx+1}", value=topic, key=f"topic_{idx}"
-#         ).strip()
-
-#     # Generate action
-#     def on_generate():
-#         if not st.session_state['topics']:
-#             st.error("Please add at least one topic.")
-#             return
-#         all_topics = []
-#         for topic in st.session_state['topics']:
-#             prompt = (
-#                 f"You are a newsletter writer for {company_name}. "
-#                 f"Write a {LENGTH_MAP[article_length]} newsletter article about '{topic}' in a lighthearted, humorous tone, "
-#                 f"using creative subheadings and emojis. Follow this style example:\n{STYLE_EXAMPLE}"
-#             )
-#             result = rag_chain.invoke(prompt)
-            
-#             # FIX: Extract the text content from the LangChain result dictionary
-#             if isinstance(result, dict):
-#                 # LangChain RetrievalQA typically returns result in 'result' key
-#                 result_text = result.get('result', '') or result.get('answer', '') or str(result)
-#             else:
-#                 result_text = str(result)
-            
-#             paras = [p.strip() for p in re.split(r'\n\n|\n', result_text) if p.strip()]
-#             all_topics.append((topic, paras))
-            
-#         # Generate DOCX
-#         doc = Document()
-#         doc.styles['Normal'].font.name = 'Arial'
-#         doc.add_heading(f"{company_name} Newsletter", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
-#         doc.add_paragraph(newsletter_date.strftime('%B %d, %Y')).alignment = WD_ALIGN_PARAGRAPH.CENTER
-#         for topic, paras in all_topics:
-#             doc.add_heading(topic, level=2)
-#             for para in paras:
-#                 doc.add_paragraph(para).alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-#         doc.add_paragraph("That's a Wrap (for Now)").alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-#         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp:
-#             doc.save(tmp.name)
-#             st.download_button(
-#                 "📥 Download as DOCX",
-#                 data=open(tmp.name, 'rb').read(),
-#                 file_name=f"{company_name.replace(' ', '_')}_Newsletter_{newsletter_date.strftime('%Y-%m-%d')}.docx",
-#                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-#             )
-#         st.success("Newsletter generated! Download your DOCX above.")
-#         st.markdown("### Preview")
-#         for topic, paras in all_topics:
-#             st.subheader(topic)
-#             for para in paras:
-#                 st.write(para)
-#             st.write("---")
-#         st.session_state['topics'] = []
-
-#     st.button("Generate Newsletter", on_click=on_generate)
-
-
-
-
 import os
 import streamlit as st
 from datetime import datetime
@@ -175,7 +6,7 @@ import re
 from pathlib import Path
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-import openai
+# import openai
 from langchain.schema import Document as LangchainDocument
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -192,17 +23,18 @@ except ImportError:
 
 load_dotenv()
 
+
 def load_documents_safely(path):
     """Load documents with robust error handling"""
     docs = []
-    
+
     if not os.path.isdir(path):
         st.warning(f"Directory {path} not found")
         return docs
-    
-    #st.info(f"Loading documents from: {path}")
+
+    st.info(f"Loading documents from: {path}")
     loaded_files = []
-    
+
     for file_path in Path(path).rglob('*'):
         if file_path.is_file():
             try:
@@ -212,8 +44,8 @@ def load_documents_safely(path):
                         docs.extend(result)
                         if result:
                             loaded_files.append(f"✅ {file_path.name}")
-                    # else:
-                    #     st.warning(f"⏭️ Skipping PDF {file_path.name} (PyPDF2 not installed)")
+                    else:
+                        st.warning(f"⏭️ Skipping PDF {file_path.name} (PyPDF2 not installed)")
                 elif file_path.suffix.lower() == '.docx':
                     result = load_docx_safe(file_path)
                     docs.extend(result)
@@ -225,17 +57,17 @@ def load_documents_safely(path):
                     if result:
                         loaded_files.append(f"✅ {file_path.name}")
             except Exception as e:
-                #st.warning(f"❌ Error loading {file_path.name}: {str(e)}")
-                pass
-    
-    # if loaded_files:
-    #     st.success(f"Loaded {len(docs)} documents:")
-    #     for file in loaded_files:
-    #         st.write(file)
-    # else:
-    #     st.warning("No documents could be loaded")
-                
+                st.warning(f"❌ Error loading {file_path.name}: {str(e)}")
+
+    if loaded_files:
+        st.success(f"Loaded {len(docs)} documents:")
+        for file in loaded_files:
+            st.write(file)
+    else:
+        st.warning("No documents could be loaded")
+
     return docs
+
 
 def load_pdf_safe(file_path):
     """Safely load PDF using PyPDF2"""
@@ -249,7 +81,7 @@ def load_pdf_safe(file_path):
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
                 st.warning(f"Error reading page {page_num + 1} of {file_path.name}: {e}")
-        
+
         if text.strip():
             docs.append(LangchainDocument(
                 page_content=text,
@@ -259,13 +91,14 @@ def load_pdf_safe(file_path):
         st.error(f"Error reading PDF {file_path.name}: {e}")
     return docs
 
+
 def load_docx_safe(file_path):
     """Safely load DOCX file"""
     docs = []
     try:
         doc = Document(str(file_path))
         text = "\n".join([paragraph.text for paragraph in doc.paragraphs if paragraph.text.strip()])
-        
+
         if text.strip():
             docs.append(LangchainDocument(
                 page_content=text,
@@ -275,13 +108,14 @@ def load_docx_safe(file_path):
         st.error(f"Error reading DOCX {file_path.name}: {e}")
     return docs
 
+
 def load_text_safe(file_path):
     """Safely load text file"""
     docs = []
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             text = f.read()
-        
+
         if text.strip():
             docs.append(LangchainDocument(
                 page_content=text,
@@ -291,56 +125,58 @@ def load_text_safe(file_path):
         st.error(f"Error reading text file {file_path.name}: {e}")
     return docs
 
+
 @st.cache_resource
 def load_rag_engine(path, temperature):
     """Load RAG engine with improved error handling"""
     # Load documents safely
     docs = load_documents_safely(path)
-    
+
     if not docs:
-        #st.warning("No documents loaded. Using default knowledge base.")
+        st.warning("No documents loaded. Using default knowledge base.")
         # Create a simple LLM without retrieval
         return ChatOpenAI(
-            model_name='gpt-4o-mini', 
-            temperature=temperature, 
+            model_name='gpt-4o-mini',
+            temperature=temperature,
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
-    
+
     # Split into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.split_documents(docs)
-    
-    #st.info(f"Created {len(chunks)} text chunks for processing")
-    
+
+    st.info(f"Created {len(chunks)} text chunks for processing")
+
     try:
         # Create embeddings + vector store
         embeddings = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY"))
         vectorstore = FAISS.from_documents(chunks, embeddings)
-        
+
         # Setup LLM and RetrievalQA
         llm = ChatOpenAI(
-            model_name='gpt-4o-mini', 
-            temperature=temperature, 
+            model_name='gpt-4o-mini',
+            temperature=temperature,
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
-        
+
         rag_chain = RetrievalQA.from_chain_type(
-            llm=llm, 
-            chain_type='stuff', 
+            llm=llm,
+            chain_type='stuff',
             retriever=vectorstore.as_retriever()
         )
-        
-        #st.success("✅ RAG engine loaded successfully with document context")
+
+        st.success("✅ RAG engine loaded successfully with document context")
         return rag_chain
-        
+
     except Exception as e:
         st.error(f"Error creating RAG engine: {e}")
         # Fallback to simple LLM
         return ChatOpenAI(
-            model_name='gpt-4o-mini', 
-            temperature=temperature, 
+            model_name='gpt-4o-mini',
+            temperature=temperature,
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
+
 
 def render_newsletter_ui():
     # Paths and constants
@@ -383,9 +219,7 @@ def render_newsletter_ui():
         for idx, topic in enumerate(st.session_state['topics']):
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.session_state['topics'][idx] = st.text_input(
-                    f"Topic {idx+1}", value=topic, key=f"topic_{idx}"
-                ).strip()
+                st.session_state['topics'][idx] = st.text_input(f"Topic {idx + 1}", value=topic, key=f"topic_{idx}").strip()
             with col2:
                 st.write("")
                 st.write("")
@@ -398,17 +232,17 @@ def render_newsletter_ui():
         if not st.session_state['topics']:
             st.error("Please add at least one topic.")
             return
-            
+
         st.info("Generating newsletter content...")
         all_topics = []
-        
+
         for topic in st.session_state['topics']:
             prompt = (
                 f"You are a newsletter writer for {company_name}. "
                 f"Write a {LENGTH_MAP[article_length]} newsletter article about '{topic}' in a lighthearted, humorous tone, "
                 f"using creative subheadings and emojis. Follow this style example:\n{STYLE_EXAMPLE}"
             )
-            
+
             try:
                 if hasattr(rag_chain, 'invoke'):
                     result = rag_chain.invoke({"query": prompt})
@@ -417,34 +251,34 @@ def render_newsletter_ui():
                 else:
                     # Fallback for simple ChatOpenAI
                     result = rag_chain.predict(prompt)
-                
+
                 # Extract text content from result
                 if isinstance(result, dict):
                     result_text = result.get('result', '') or result.get('answer', '') or str(result)
                 else:
                     result_text = str(result)
-                
+
                 paras = [p.strip() for p in re.split(r'\n\n|\n', result_text) if p.strip()]
                 all_topics.append((topic, paras))
-                
+
             except Exception as e:
                 st.error(f"Error generating content for '{topic}': {e}")
                 continue
-            
+
         # Generate DOCX
         doc = Document()
         doc.styles['Normal'].font.name = 'Arial'
         doc.add_heading(f"{company_name} Newsletter", 0).alignment = WD_ALIGN_PARAGRAPH.CENTER
         doc.add_paragraph(newsletter_date.strftime('%B %d, %Y')).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
+
         for topic, paras in all_topics:
             doc.add_heading(topic, level=2)
             for para in paras:
                 if para:  # Only add non-empty paragraphs
                     doc.add_paragraph(para).alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-                    
+
         doc.add_paragraph("That's a Wrap (for Now)").alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
+
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp:
             doc.save(tmp.name)
             with open(tmp.name, 'rb') as file:
@@ -454,7 +288,7 @@ def render_newsletter_ui():
                     file_name=f"{company_name.replace(' ', '_')}_Newsletter_{newsletter_date.strftime('%Y-%m-%d')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
-        
+
         st.success("Newsletter generated! Download your DOCX above.")
         st.markdown("### Preview")
         for topic, paras in all_topics:
@@ -463,7 +297,7 @@ def render_newsletter_ui():
                 if para:
                     st.write(para)
             st.write("---")
-        
+
         # Clear topics after successful generation
         st.session_state['topics'] = []
 
