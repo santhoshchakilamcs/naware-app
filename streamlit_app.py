@@ -1,14 +1,20 @@
-from test import render_followup_ui
-from Newsletter import render_newsletter_ui
-from Investor_update import render_investor_ui
 import os
 import streamlit as st
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
-
-# ─── Import your three app‐modules ────────────────────────────────────────────
+# ─── Import your three app modules ────────────────────────────────────────────
+# Note: Make sure these files exist and have the correct function names
+try:
+    from Newsletter import render_newsletter_ui
+    from Investor_update import render_investor_ui
+    # Import the follow-up function - adjust the filename as needed
+    from followup_emails import render_followup_ui  # Change this to match your actual filename
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.error("Please make sure all required files exist: Newsletter.py, Investor_update.py, and your follow-up email file")
+    st.stop()
 
 # ─── PAGE CONFIG ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -145,8 +151,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─── SHARED DEFAULTS ─────────────────────────────────────────────────────────
-
-
 DEFAULTS = {
     "OPENAI_API_KEY": st.secrets.get("OPENAI_API_KEY"),
     "PIPEDRIVE_DOMAIN": st.secrets.get("PIPEDRIVE_DOMAIN", "Naware"),
@@ -164,7 +168,6 @@ for k, v in DEFAULTS.items():
         st.error(f"Missing required environment variable: {k}")
         st.stop()
     st.session_state.setdefault(k, v)
-
 
 # ─── APP SELECTOR WITH ENHANCED STYLING ─────────────────────────────────────────
 st.sidebar.title("🚀 Naware App Hub")
@@ -202,11 +205,18 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 # ─── DISPATCH ────────────────────────────────────────────────────────────────
-if app_choice == "📊 Investor Update":
-    render_investor_ui()
+try:
+    if app_choice == "📊 Investor Update":
+        render_investor_ui()
 
-elif app_choice == "📰 Newsletter Generator":
-    render_newsletter_ui()
+    elif app_choice == "📰 Newsletter Generator":
+        render_newsletter_ui()
 
-elif app_choice == "📧 Demo Follow-Up Emails":
-    render_followup_ui()
+    elif app_choice == "📧 Demo Follow-Up Emails":
+        render_followup_ui()
+
+except Exception as e:
+    st.error(f"Error running selected app: {e}")
+    st.error("Please check that all required files and functions exist.")
+    st.info("Required files: Newsletter.py, Investor_update.py, and your follow-up email file")
+    st.info("Required functions: render_newsletter_ui(), render_investor_ui(), render_followup_ui()")
