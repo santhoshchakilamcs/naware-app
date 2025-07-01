@@ -26,6 +26,61 @@ env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(dotenv_path=env_path)
 
 
+def load_documents_from_uploads(uploaded_files):
+    """Load documents from uploaded files"""
+    docs = []
+    loaded_files = []
+    
+    if not uploaded_files:
+        return docs
+    
+    st.info(f"Processing {len(uploaded_files)} uploaded files...")
+    
+    for uploaded_file in uploaded_files:
+        try:
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp:
+                tmp.write(uploaded_file.read())
+                tmp_path = tmp.name
+            
+            # Process based on file type
+            if uploaded_file.name.lower().endswith('.pdf'):
+                if PDF_AVAILABLE:
+                    result = load_pdf_safe(tmp_path)
+                    docs.extend(result)
+                    if result:
+                        loaded_files.append(f"✅ {uploaded_file.name}")
+                else:
+                    st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
+            
+            elif uploaded_file.name.lower().endswith('.docx'):
+                result = load_docx_safe(tmp_path)
+                docs.extend(result)
+                if result:
+                    loaded_files.append(f"✅ {uploaded_file.name}")
+            
+            elif uploaded_file.name.lower().endswith(('.txt', '.md')):
+                result = load_text_safe(tmp_path)
+                docs.extend(result)
+                if result:
+                    loaded_files.append(f"✅ {uploaded_file.name}")
+            
+            # Clean up temp file
+            os.unlink(tmp_path)
+            
+        except Exception as e:
+            st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+    
+    if loaded_files:
+        st.success(f"Successfully loaded {len(docs)} documents:")
+        for file in loaded_files:
+            st.write(file)
+    else:
+        st.warning("No documents could be loaded from uploads")
+    
+    return docs
+
+
 def load_documents_safely(path):
     """Load documents with robust error handling"""
     docs = []
@@ -82,7 +137,7 @@ def load_pdf_safe(file_path):
                 page_text = page.extract_text()
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
-                st.warning(f"Error reading page {page_num + 1} of {file_path.name}: {e}")
+                st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
 
         if text.strip():
             docs.append(LangchainDocument(
@@ -90,7 +145,7 @@ def load_pdf_safe(file_path):
                 metadata={"source": str(file_path), "type": "pdf"}
             ))
     except Exception as e:
-        st.error(f"Error reading PDF {file_path.name}: {e}")
+        st.error(f"Error reading PDF {Path(file_path).name}: {e}")
     return docs
 
 
@@ -107,7 +162,7 @@ def load_docx_safe(file_path):
                 metadata={"source": str(file_path), "type": "docx"}
             ))
     except Exception as e:
-        st.error(f"Error reading DOCX {file_path.name}: {e}")
+        st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
     return docs
 
 
@@ -124,7 +179,7 @@ def load_text_safe(file_path):
                 metadata={"source": str(file_path), "type": "text"}
             ))
     except Exception as e:
-        st.error(f"Error reading text file {file_path.name}: {e}")
+        st.error(f"Error reading text file {Path(file_path).name}: {e}")
     return docs
 
 
@@ -132,8 +187,8 @@ def render_investor_ui():
     # OpenAI key
     openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-    # Paths and constants
-    COMPANY_DOC_PATH = st.secrets.get("COMPANY_DOC_PATH")
+    # Constants - COMPANY_DOC_PATH is now used for file upload configuration
+    COMPANY_DOC_PATH = st.secrets.get("COMPANY_DOC_PATH", "Upload your company documents")
     UPDATE_TYPES = ["Monthly Update", "Quarterly Update", "Milestone Update", "Board Update"]
     LENGTH_MAP = {"Brief": "200-300 words", "Standard": "400-600 words", "Detailed": "700-900 words"}
 
@@ -188,15 +243,38 @@ def render_investor_ui():
     Write from the CEO's perspective providing transparent, professional updates to the investment community.
     """
 
+    # --- Document Upload Section ---
+    st.title("📈 Naware Professional Investor Updates")
+    st.markdown("Generate institutional-grade investor communications with comprehensive business metrics and professional formatting.")
+    
+    st.header("📁 Upload Company Documents")
+    st.markdown(f"**{COMPANY_DOC_PATH}**")
+    
+    uploaded_files = st.file_uploader(
+        "Choose company documents (PDF, DOCX, TXT, MD)",
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'txt', 'md'],
+        help="Upload internal documents, reports, meeting notes, or any company materials that should inform the investor update."
+    )
+    
+    # Document processing
+    all_docs = []
+    
+    if uploaded_files:
+        all_docs = load_documents_from_uploads(uploaded_files)
+        st.session_state['uploaded_docs'] = all_docs
+    
+    if all_docs:
+        st.success(f"Total documents loaded: {len(all_docs)}")
+    else:
+        st.info("No documents uploaded. The AI will use its general knowledge about startups and business communications.")
+
     # --- RAG Engine Initialization ---
     @st.cache_resource
-    def load_rag_engine(path, temperature):
-        """Initialize RAG engine with company documents using safe loading"""
-        # Load documents safely
-        docs = load_documents_safely(path)
-
+    def load_rag_engine_with_docs(docs, temperature):
+        """Initialize RAG engine with provided documents"""
         if not docs:
-            st.warning("No documents loaded. Using default knowledge base.")
+            st.warning("No documents provided. Using default knowledge base.")
             # Create a simple LLM without retrieval
             return ChatOpenAI(
                 model_name='gpt-4o-mini',
@@ -254,17 +332,13 @@ def render_investor_ui():
         include_financials = st.checkbox("Include Financial Summary", True)
         tone = st.selectbox("Tone", ["Optimistic", "Balanced", "Conservative"], index=0)
 
-    # Initialize RAG engine
+    # Initialize RAG engine with uploaded documents only
     try:
-        rag_chain = load_rag_engine(COMPANY_DOC_PATH, temperature)
+        rag_chain = load_rag_engine_with_docs(all_docs, temperature)
         st.sidebar.success("✅ RAG Engine Loaded")
     except Exception as e:
         st.sidebar.error(f"❌ RAG Engine Error: {e}")
         rag_chain = None
-
-    # --- Main UI ---
-    st.title("📈 Naware Professional Investor Updates")
-    st.markdown("Generate institutional-grade investor communications with comprehensive business metrics and professional formatting.")
 
     # Professional templates for investor communications
     st.header("📋 Professional Update Templates")
@@ -513,4 +587,4 @@ def render_investor_ui():
 
     # Footer
     st.markdown("---")
-    st.markdown("*Naware*")
+    st.markdown("*Naware Professional Investor Communications*")
