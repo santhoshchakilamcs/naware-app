@@ -3,25 +3,18 @@ import time
 import ssl
 import smtplib
 import requests
-import openai
 import re
 import streamlit as st
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from langchain_openai import ChatOpenAI
 
 from dotenv import load_dotenv
 load_dotenv()
 
 
 def render_followup_ui():
-    # ——— Page config ——————————————————————————————
-    # st.set_page_config(
-    #     page_title="Demo Follow-Up Generator",
-    #     page_icon="✉️",
-    #     layout="wide",
-    # )
-
     # ——— Defaults & session init —————————————————————————
     DEFAULTS = {
         "contacts": [],
@@ -44,94 +37,94 @@ def render_followup_ui():
             st.stop()
         st.session_state.setdefault(k, v)
 
-    # def full_reset():
-    #     # 1) clear all your app state keys
-    #     for key in ["contacts", "previews", "approved"]:
-    #         if key in st.session_state:
-    #             del st.session_state[key]
-    #     # 2) raise a RerunException to immediately restart the script
-    #     raise RerunException(RerunData())
-
     # ——— Helpers —————————————————————————————————————
+    def validate_email(e):
+        return bool(re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', e))
 
-
-def validate_email(e):
-    return bool(re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', e))
-
-
-def get_base_url():
-    return f"https://{st.session_state.pipedrive_domain}.pipedrive.com/api/v1"
+    def get_base_url():
+        return f"https://{st.session_state.pipedrive_domain}.pipedrive.com/api/v1"
 
     def find_or_create_deal(org):
-        resp = requests.get(
-            f"{get_base_url()}/deals/search",
-            params={"api_token": st.session_state.pipedrive_api_token, "term": org},
-        ).json()
-        if resp.get("success") and resp["data"]["items"]:
-            return resp["data"]["items"][0]["item"]["id"]
-        new = requests.post(
-            f"{get_base_url()}/deals",
-            params={"api_token": st.session_state.pipedrive_api_token},
-            json={"title": f"{org} – Demo Follow-Up", "status": "open"},
-        ).json()
-        return new["data"]["id"] if new.get("success") else None
+        try:
+            resp = requests.get(
+                f"{get_base_url()}/deals/search",
+                params={"api_token": st.session_state.pipedrive_api_token, "term": org},
+            ).json()
+            if resp.get("success") and resp["data"]["items"]:
+                return resp["data"]["items"][0]["item"]["id"]
+            new = requests.post(
+                f"{get_base_url()}/deals",
+                params={"api_token": st.session_state.pipedrive_api_token},
+                json={"title": f"{org} – Demo Follow-Up", "status": "open"},
+            ).json()
+            return new["data"]["id"] if new.get("success") else None
+        except Exception as e:
+            st.error(f"Error with Pipedrive: {e}")
+            return None
 
     def log_activity(deal_id, subj, body):
-        requests.post(
-            f"{get_base_url()}/activities",
-            params={"api_token": st.session_state.pipedrive_api_token},
-            json={"subject": subj, "note": body, "deal_id": deal_id, "type": "email", "done": 1},
-        )
+        try:
+            requests.post(
+                f"{get_base_url()}/activities",
+                params={"api_token": st.session_state.pipedrive_api_token},
+                json={"subject": subj, "note": body, "deal_id": deal_id, "type": "email", "done": 1},
+            )
+        except Exception as e:
+            st.error(f"Error logging activity: {e}")
 
     def gen_email(name, org, date, cta, product):
         date_str = date.strftime("%B %d, %Y")
         prompt = (
-            f"SYSTEM: You are a professional sales engineer at Naware, makers of the “Wipe All Weedrupter,” an innovative steam-based, AI-driven weed control solution.\n\n"
-            f"USER: Write a warm, multi-paragraph thank-you email to {name} at {
-                org} for attending our demo of {product} on {date_str}. Be sure to:\n"
+            f"SYSTEM: You are a professional sales engineer at Naware, makers of the "Wipe All Weedrupter," an innovative steam-based, AI-driven weed control solution.\n\n"
+            f"USER: Write a warm, multi-paragraph thank-you email to {name} at {org} for attending our demo of {product} on {date_str}. Be sure to:\n"
             f"  . Do not include a subject line in the email body.\n"
             f"  • Express genuine appreciation for their time and thoughtful questions during the demo.\n"
             f"  • Highlight their role/industry and why their feedback matters to us as early adopters.\n"
             f"  • Invite them to share any photos or notes they took—this helps us tailor future improvements.\n"
-            f"  • Clearly outline next steps, including a single call-to-action link to schedule a follow-up discussion: {
-                cta}\n"
-            f"  • Reinforce our “fail fast, learn fast” philosophy and our commitment to close collaboration.\n"
-            f"  • Sign off warmly as {
-                st.session_state.email_sender_name}, optionally adding a P.S. with a quick tip or resource relevant to their use case.\n\n"
+            f"  • Clearly outline next steps, including a single call-to-action link to schedule a follow-up discussion: {cta}\n"
+            f"  • Reinforce our "fail fast, learn fast" philosophy and our commitment to close collaboration.\n"
+            f"  • Sign off warmly as {st.session_state.email_sender_name}, optionally adding a P.S. with a quick tip or resource relevant to their use case.\n\n"
             f"Return just the email body (no subject line) in plain text."
         )
 
-        resp = openai.ChatCompletion.create(
-            model=st.session_state.selected_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=350,
-            api_key=st.session_state.openai_api_key
-        )
-        return resp.choices[0].message.content.strip()
+        try:
+            llm = ChatOpenAI(
+                model_name=st.session_state.selected_model,
+                temperature=0.7,
+                max_tokens=350,
+                api_key=st.session_state.openai_api_key
+            )
+            response = llm.predict(prompt)
+            return response.strip()
+        except Exception as e:
+            st.error(f"Error generating email: {e}")
+            return f"Error generating email content: {str(e)}"
 
     def send_email(to_addr, subj, body, deal_id=None):
-        msg = MIMEMultipart("alternative")
-        msg["Subject"], msg["From"], msg["To"] = subj, st.session_state.email_username, to_addr
-        if deal_id:
-            msg["Bcc"] = f"naware+deal{deal_id}@pipedrivemail.com"
-        msg.attach(MIMEText(body, "plain"))
-        msg.attach(MIMEText(body.replace("\n", "<br>"), "html"))
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP(st.session_state.smtp_server, st.session_state.smtp_port) as srv:
-            srv.starttls(context=ctx)
-            srv.login(st.session_state.email_username, st.session_state.email_password)
-            srv.sendmail(
-                st.session_state.email_username,
-                [to_addr] + ([msg["Bcc"]] if deal_id else []),
-                msg.as_string()
-            )
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"], msg["From"], msg["To"] = subj, st.session_state.email_username, to_addr
+            if deal_id:
+                msg["Bcc"] = f"naware+deal{deal_id}@pipedrivemail.com"
+            msg.attach(MIMEText(body, "plain"))
+            msg.attach(MIMEText(body.replace("\n", "<br>"), "html"))
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP(st.session_state.smtp_server, int(st.session_state.smtp_port)) as srv:
+                srv.starttls(context=ctx)
+                srv.login(st.session_state.email_username, st.session_state.email_password)
+                srv.sendmail(
+                    st.session_state.email_username,
+                    [to_addr] + ([msg["Bcc"]] if deal_id else []),
+                    msg.as_string()
+                )
+            return True
+        except Exception as e:
+            st.error(f"Error sending email: {e}")
+            return False
 
     # ——— Sidebar settings —————————————————————————————
     with st.sidebar:
         st.header("⚙️ Settings")
-        # st.session_state.openai_api_key = st.text_input("OpenAI API Key", st.session_state.openai_api_key, type="password")
-        openai.api_key = st.session_state.openai_api_key
         st.session_state.selected_model = st.selectbox("AI Model",
                                                        ["gpt-4o-mini",
                                                         "gpt-4o",
@@ -146,15 +139,11 @@ def get_base_url():
 
         st.subheader("Email SMTP")
         st.session_state.smtp_server = st.text_input("SMTP Server", st.session_state.smtp_server)
-        # st.session_state.smtp_port   = st.number_input("SMTP Port", value=st.session_state.smtp_port)
-        # Sidebar: Email SMTP
         smtp_port_str = st.text_input("SMTP Port", str(st.session_state.smtp_port))
         if smtp_port_str.isdigit():
             st.session_state.smtp_port = int(smtp_port_str)
         else:
             st.error("🚨 SMTP Port must be a number")
-        # st.session_state.email_username    = st.text_input("Username", st.session_state.email_username)
-        # st.session_state.email_password    = st.text_input("Password", st.session_state.email_password, type="password")
         st.session_state.email_sender_name = st.text_input("Sender Name", st.session_state.email_sender_name)
 
     # ——— Main page ————————————————————————————————
@@ -168,7 +157,7 @@ def get_base_url():
         o = st.text_input("Organization")
         d = st.date_input("Demo Date", datetime.today())
         cta = st.text_input("CTA Link")
-        prod = st.selectbox("Product Demo’d", ["Wipe All", "AI-driven solution"])
+        prod = st.selectbox("Product Demo'd", ["Wipe All", "AI-driven solution"])
         if st.form_submit_button("Add contact"):
             if not (n and validate_email(e) and o and cta):
                 st.error("Please fill name, valid email, org & CTA.")
@@ -203,42 +192,45 @@ def get_base_url():
     approved = sorted(st.session_state.approved)
     if approved:
         if st.button(f"✉️ Send & Log {len(approved)} emails"):
-
+            success_count = 0
             for i in approved:
                 ct = st.session_state.contacts[i]
-                subj = f"Thank you, {ct['org']} – Next steps"  # Subject
+                subj = f"Thank you, {ct['org']} – Next steps"
                 body = st.session_state.previews[i]
 
                 # find or create deal
                 deal_id = find_or_create_deal(ct["org"])
-                # send once (with BCC if deal_id)
-                send_email(ct["email"], subj, body, deal_id=deal_id)
-                # log in Pipedrive
-                if deal_id:
-                    log_activity(deal_id, subj, body)
+                # send email
+                if send_email(ct["email"], subj, body, deal_id=deal_id):
+                    success_count += 1
+                    # log in Pipedrive
+                    if deal_id:
+                        log_activity(deal_id, subj, body)
                 time.sleep(0.5)
 
-            st.success(f"✅ Sent & logged {len(approved)} emails")
+            if success_count > 0:
+                st.success(f"✅ Sent & logged {success_count} emails")
 
-            # Remove only the sent contacts and their associated data
-            remaining_contacts = []
-            remaining_previews = {}
+                # Remove only the sent contacts and their associated data
+                remaining_contacts = []
+                remaining_previews = {}
 
-            for idx, contact in enumerate(st.session_state.contacts):
-                if idx not in approved:
-                    new_idx = len(remaining_contacts)
-                    remaining_contacts.append(contact)
-                    if idx in st.session_state.previews:
-                        remaining_previews[new_idx] = st.session_state.previews[idx]
+                for idx, contact in enumerate(st.session_state.contacts):
+                    if idx not in approved:
+                        new_idx = len(remaining_contacts)
+                        remaining_contacts.append(contact)
+                        if idx in st.session_state.previews:
+                            remaining_previews[new_idx] = st.session_state.previews[idx]
 
-            st.session_state.contacts = remaining_contacts
-            st.session_state.previews = remaining_previews
-            st.session_state.approved.clear()
-            st.session_state.just_sent = True
+                st.session_state.contacts = remaining_contacts
+                st.session_state.previews = remaining_previews
+                st.session_state.approved.clear()
 
-            # Force a rerun to refresh the UI
-            time.sleep(2)
-            st.rerun()
+                # Force a rerun to refresh the UI
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.error("Failed to send any emails. Please check your configuration.")
 
     else:
         st.info("Check ✔️ boxes above to approve emails, then click Send & Log.")
