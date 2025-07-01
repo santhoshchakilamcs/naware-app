@@ -27,13 +27,9 @@ load_dotenv()
 def load_documents_from_uploads(uploaded_files):
     """Load documents from uploaded files"""
     docs = []
-    loaded_files = []
     
     if not uploaded_files:
         return docs
-    
-    with st.sidebar:
-        st.info(f"Processing {len(uploaded_files)} uploaded files...")
     
     for uploaded_file in uploaded_files:
         try:
@@ -47,8 +43,6 @@ def load_documents_from_uploads(uploaded_files):
                 if PDF_AVAILABLE:
                     result = load_pdf_safe(tmp_path)
                     docs.extend(result)
-                    if result:
-                        loaded_files.append(f"✅ {uploaded_file.name}")
                 else:
                     with st.sidebar:
                         st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
@@ -56,14 +50,10 @@ def load_documents_from_uploads(uploaded_files):
             elif uploaded_file.name.lower().endswith('.docx'):
                 result = load_docx_safe(tmp_path)
                 docs.extend(result)
-                if result:
-                    loaded_files.append(f"✅ {uploaded_file.name}")
             
             elif uploaded_file.name.lower().endswith(('.txt', '.md')):
                 result = load_text_safe(tmp_path)
                 docs.extend(result)
-                if result:
-                    loaded_files.append(f"✅ {uploaded_file.name}")
             
             # Clean up temp file
             os.unlink(tmp_path)
@@ -71,15 +61,6 @@ def load_documents_from_uploads(uploaded_files):
         except Exception as e:
             with st.sidebar:
                 st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
-    
-    if loaded_files:
-        with st.sidebar:
-            st.success(f"Successfully loaded {len(docs)} documents:")
-            for file in loaded_files:
-                st.write(file)
-    else:
-        with st.sidebar:
-            st.warning("No documents could be loaded from uploads")
     
     return docs
 
@@ -149,8 +130,6 @@ def load_text_safe(file_path):
 def load_rag_engine_with_docs(_docs, temperature):
     """Load RAG engine with provided documents"""
     if not _docs:
-        with st.sidebar:
-            st.warning("No documents provided. Using default knowledge base.")
         # Create a simple LLM without retrieval
         return ChatOpenAI(
             model_name='gpt-4o-mini',
@@ -161,9 +140,6 @@ def load_rag_engine_with_docs(_docs, temperature):
     # Split into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.split_documents(_docs)
-
-    with st.sidebar:
-        st.info(f"Created {len(chunks)} text chunks for processing")
 
     try:
         # Create embeddings + vector store
@@ -183,8 +159,6 @@ def load_rag_engine_with_docs(_docs, temperature):
             retriever=vectorstore.as_retriever()
         )
 
-        with st.sidebar:
-            st.success("✅ RAG engine loaded successfully with document context")
         return rag_chain
 
     except Exception as e:
@@ -213,36 +187,26 @@ def render_newsletter_ui():
     st.title("📰 Naware Newsletter Generator")
     st.markdown("Generate context-rich, humorous newsletters using your company docs and OpenAI.")
 
-    # --- Document Upload Section ---
-    st.header("📁 Upload Company Documents")
-    st.markdown(f"**{COMPANY_DOC}**")
-    
-    uploaded_files = st.file_uploader(
-        "Choose company documents (PDF, DOCX, TXT, MD)",
-        accept_multiple_files=True,
-        type=['pdf', 'docx', 'txt', 'md'],
-        help="Upload company documents, meeting notes, or reports to provide context for newsletter generation."
-    )
-    
-    # Document processing
-    all_docs = []
-    
-    if uploaded_files:
-        all_docs = load_documents_from_uploads(uploaded_files)
-        st.session_state['uploaded_docs'] = all_docs
-    
-    if all_docs:
-        with st.sidebar:
-            st.success(f"📄 {len(all_docs)} documents loaded")
-    else:
-        st.info("💡 Upload documents above to provide company context for newsletters.")
-
     # Sidebar settings
     st.sidebar.header("Configuration")
     temperature = st.sidebar.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
     article_length = st.sidebar.select_slider("Article Length", ["Short", "Medium", "Long"], "Medium")
     company_name = st.sidebar.text_input("Company Name", "Naware")
     newsletter_date = st.sidebar.date_input("Newsletter Date", datetime.now())
+
+    # --- Document Upload in Sidebar ---
+    st.sidebar.header("📁 Upload Documents")
+    uploaded_files = st.sidebar.file_uploader(
+        "Company docs (PDF, DOCX, TXT, MD)",
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'txt', 'md'],
+        help="Upload company documents for newsletter context"
+    )
+    
+    # Document processing
+    all_docs = []
+    if uploaded_files:
+        all_docs = load_documents_from_uploads(uploaded_files)
 
     # Initialize RAG engine with uploaded documents
     rag_chain = load_rag_engine_with_docs(all_docs, temperature)
