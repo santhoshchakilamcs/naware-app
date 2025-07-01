@@ -4,8 +4,7 @@
 # # ------------------------------------------------------------------------
 # # ------------------------------------------------------------------------
 
-# # # #AIzaSyD5yUJPJ2sbTbMD0CrcSYfFtX8d2klG9ZU
-# # # #clientid = 571577081299-qg948ttbabvclli5e3cthfmf2962bu97.apps.googleusercontent.com
+
 import os
 import time
 import ssl
@@ -35,14 +34,14 @@ def render_followup_ui():
         "contacts": [],
         "previews": {},
         "approved": set(),
-        "openai_api_key": os.getenv("OPENAI_API_KEY"),
-        "pipedrive_domain": os.getenv("PIPEDRIVE_DOMAIN", "Naware"),
-        "pipedrive_api_token": os.getenv("PIPEDRIVE_API_TOKEN"),
-        "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com"),
-        "smtp_port": os.getenv("SMTP_PORT", "587"),
-        "email_username": os.getenv("EMAIL_USERNAME"),
-        "email_password": os.getenv("EMAIL_PASSWORD"),
-        "email_sender_name": os.getenv("EMAIL_SENDER_NAME", "Team Naware"),
+        "openai_api_key": os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"],
+        "pipedrive_domain": os.getenv("PIPEDRIVE_DOMAIN", "Naware") or st.secrets["PIPEDRIVE_DOMAIN"],
+        "pipedrive_api_token": os.getenv("PIPEDRIVE_API_TOKEN") or st.secrets["PIPEDRIVE_API_TOKEN"],
+        "smtp_server": os.getenv("SMTP_SERVER", "smtp.gmail.com") or st.secrets["SMTP_SERVER"],
+        "smtp_port": os.getenv("SMTP_PORT", "587") or st.secrets["SMTP_PORT"],
+        "email_username": os.getenv("EMAIL_USERNAME") or st.secrets["EMAIL_USERNAME"],
+        "email_password": os.getenv("EMAIL_PASSWORD") or st.secrets["EMAIL_PASSWORD"],
+        "email_sender_name": os.getenv("EMAIL_SENDER_NAME", "Team Naware") or st.secrets["EMAIL_SENDER_NAME"],
         "selected_model": "gpt-4o-mini",
     }
 
