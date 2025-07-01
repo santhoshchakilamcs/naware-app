@@ -1,4 +1,4 @@
-from test import render_followup_ui  # rename if needed
+from test import render_followup_ui
 from Newsletter import render_newsletter_ui
 from Investor_update import render_investor_ui
 import os
