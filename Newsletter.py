@@ -138,7 +138,7 @@ def load_rag_engine(path, temperature):
         return ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY")
+            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
         )
 
     # Split into chunks
@@ -149,14 +149,14 @@ def load_rag_engine(path, temperature):
 
     try:
         # Create embeddings + vector store
-        embeddings = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY"))
+        embeddings = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"])
         vectorstore = FAISS.from_documents(chunks, embeddings)
 
         # Setup LLM and RetrievalQA
         llm = ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY")
+            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
         )
 
         rag_chain = RetrievalQA.from_chain_type(
@@ -174,7 +174,7 @@ def load_rag_engine(path, temperature):
         return ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY")
+            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
         )
 
 
