@@ -148,14 +148,14 @@ st.markdown("""
 
 
 DEFAULTS = {
-    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"],
-    "PIPEDRIVE_DOMAIN": os.getenv("PIPEDRIVE_DOMAIN", "Naware") or st.secrets["PIPEDRIVE_DOMAIN"],
-    "PIPEDRIVE_API_TOKEN": os.getenv("PIPEDRIVE_API_TOKEN") or st.secrets["PIPEDRIVE_API_TOKEN"],
-    "SMTP_SERVER": os.getenv("SMTP_SERVER", "smtp.gmail.com") or st.secrets["SMTP_SERVER"],
-    "SMTP_PORT": os.getenv("SMTP_PORT", "587") or st.secrets["SMTP_PORT"],
-    "EMAIL_USERNAME": os.getenv("EMAIL_USERNAME") or st.secrets["EMAIL_USERNAME"],
-    "EMAIL_PASSWORD": os.getenv("EMAIL_PASSWORD") or st.secrets["EMAIL_PASSWORD"],
-    "EMAIL_SENDER_NAME": os.getenv("EMAIL_SENDER_NAME", "Team Naware") or st.secrets["EMAIL_SENDER_NAME"],
+    "OPENAI_API_KEY": st.secrets["OPENAI_API_KEY"],
+    "PIPEDRIVE_DOMAIN": st.secrets["PIPEDRIVE_DOMAIN"],
+    "PIPEDRIVE_API_TOKEN": st.secrets["PIPEDRIVE_API_TOKEN"],
+    "SMTP_SERVER": st.secrets["SMTP_SERVER"],
+    "SMTP_PORT": st.secrets["SMTP_PORT"],
+    "EMAIL_USERNAME": st.secrets["EMAIL_USERNAME"],
+    "EMAIL_PASSWORD": st.secrets["EMAIL_PASSWORD"],
+    "EMAIL_SENDER_NAME": st.secrets["EMAIL_SENDER_NAME"],
     "selected_model": "gpt-4o-mini",
 }
 
