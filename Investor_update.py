@@ -293,26 +293,26 @@ def render_investor_ui():
 
     with col1:
         if st.button("📊 Quarterly Review"):
-            st.session_state['topics'] = ["Executive Summary", "Financial Performance", "Operational Highlights", "Strategic Objectives", "Risk Assessment"]
+            st.session_state['investor_topics'] = ["Executive Summary", "Financial Performance", "Operational Highlights", "Strategic Objectives", "Risk Assessment"]
 
     with col2:
         if st.button("🎯 Progress Report"):
-            st.session_state['topics'] = ["Milestone Achievements", "Product Development Status", "Commercial Pipeline", "Operational Metrics"]
+            st.session_state['investor_topics'] = ["Milestone Achievements", "Product Development Status", "Commercial Pipeline", "Operational Metrics"]
 
     with col3:
         if st.button("💼 Board Update"):
-            st.session_state['topics'] = ["Strategic Overview", "Financial Summary", "Team & Operations", "Market Position", "Forward Guidance"]
+            st.session_state['investor_topics'] = ["Strategic Overview", "Financial Summary", "Team & Operations", "Market Position", "Forward Guidance"]
 
     with col4:
         if st.button("📈 Performance Review"):
-            st.session_state['topics'] = ["KPI Dashboard", "Revenue Analysis", "Customer Acquisition", "Technology Progress", "Investment Utilization"]
+            st.session_state['investor_topics'] = ["KPI Dashboard", "Revenue Analysis", "Customer Acquisition", "Technology Progress", "Investment Utilization"]
 
-    # Topic management
-    if 'topics' not in st.session_state:
-        st.session_state['topics'] = []
+    # Topic management - Investor specific
+    if 'investor_topics' not in st.session_state:
+        st.session_state['investor_topics'] = []
 
     st.header("📝 Update Topics")
-    with st.form(key='topic_form', clear_on_submit=True):
+    with st.form(key='investor_topic_form', clear_on_submit=True):
         col1, col2 = st.columns([3, 1])
         with col1:
             new_topic = st.text_input("Enter a topic to cover in the update")
@@ -320,28 +320,28 @@ def render_investor_ui():
             st.write("")
             st.write("")
             if st.form_submit_button("➕ Add Topic") and new_topic.strip():
-                st.session_state['topics'].append(new_topic.strip())
+                st.session_state['investor_topics'].append(new_topic.strip())
 
     # Display and edit topics
-    if st.session_state['topics']:
+    if st.session_state['investor_topics']:
         st.subheader("Current Topics:")
-        for idx, topic in enumerate(st.session_state['topics']):
+        for idx, topic in enumerate(st.session_state['investor_topics']):
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.session_state['topics'][idx] = st.text_input(
-                    f"Topic {idx + 1}", value=topic, key=f"topic_{idx}"
+                st.session_state['investor_topics'][idx] = st.text_input(
+                    f"Topic {idx + 1}", value=topic, key=f"investor_topic_{idx}"
                 ).strip()
             with col2:
                 st.write("")
                 st.write("")
-                if st.button("🗑️", key=f"delete_{idx}"):
-                    st.session_state['topics'].pop(idx)
+                if st.button("🗑️", key=f"investor_delete_{idx}"):
+                    st.session_state['investor_topics'].pop(idx)
                     st.rerun()
 
     # Generate function
     def generate_investor_update():
         """Generate the investor update content"""
-        if not st.session_state['topics']:
+        if not st.session_state['investor_topics']:
             st.error("Please add at least one topic.")
             return None, None
 
@@ -353,7 +353,7 @@ def render_investor_ui():
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        for idx, topic in enumerate(st.session_state['topics']):
+        for idx, topic in enumerate(st.session_state['investor_topics']):
             status_text.text(f"Generating content for: {topic}")
 
             # Create professional prompt for each topic
@@ -406,7 +406,7 @@ def render_investor_ui():
                 st.error(f"Error generating content for '{topic}': {e}")
                 continue
 
-            progress_bar.progress((idx + 1) / len(st.session_state['topics']))
+            progress_bar.progress((idx + 1) / len(st.session_state['investor_topics']))
 
         status_text.text("Update generated successfully!")
         return all_sections, create_docx_update(all_sections)
@@ -491,12 +491,18 @@ def render_investor_ui():
             if sections and docx_path:
                 # Download button
                 with open(docx_path, 'rb') as file:
-                    st.download_button(
-                        label="📥 Download as DOCX",
-                        data=file.read(),
-                        file_name=f"{company_name.replace(' ', '_')}_Investor_Update_{update_date.strftime('%Y-%m-%d')}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+                    file_data = file.read()
+                
+                download_clicked = st.download_button(
+                    label="📥 Download as DOCX",
+                    data=file_data,
+                    file_name=f"{company_name.replace(' ', '_')}_Investor_Update_{update_date.strftime('%Y-%m-%d')}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+                
+                # Clear topics after download
+                if download_clicked:
+                    st.session_state['investor_topics'] = []
 
                 st.success("✅ Investor update generated successfully!")
 
@@ -532,7 +538,7 @@ def render_investor_ui():
 
                 # Clear topics after successful generation
                 if st.button("🗑️ Clear Topics"):
-                    st.session_state['topics'] = []
+                    st.session_state['investor_topics'] = []
                     st.rerun()
 
     # Footer
