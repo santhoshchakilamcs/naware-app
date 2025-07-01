@@ -94,8 +94,8 @@ def render_followup_ui():
                 max_tokens=350,
                 api_key=st.session_state.openai_api_key
             )
-            response = llm.predict(prompt)
-            return response.strip()
+            response = llm.invoke(prompt)  # Use invoke instead of deprecated predict
+            return response.content.strip()  # Access content from the response
         except Exception as e:
             st.error(f"Error generating email: {e}")
             return f"Error generating email content: {str(e)}"
