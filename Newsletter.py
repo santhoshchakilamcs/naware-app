@@ -25,11 +25,17 @@ load_dotenv()
 
 
 def load_documents_from_uploads(uploaded_files):
-    """Load documents from uploaded files"""
+    """Load documents from uploaded files and store in session state"""
     docs = []
     
     if not uploaded_files:
         return docs
+    
+    # Check if files are already processed in session state
+    current_file_names = [f.name for f in uploaded_files]
+    if 'processed_docs' in st.session_state and 'processed_file_names' in st.session_state:
+        if st.session_state['processed_file_names'] == current_file_names:
+            return st.session_state['processed_docs']
     
     for uploaded_file in uploaded_files:
         try:
@@ -61,6 +67,10 @@ def load_documents_from_uploads(uploaded_files):
         except Exception as e:
             with st.sidebar:
                 st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+    
+    # Store processed documents in session state
+    st.session_state['processed_docs'] = docs
+    st.session_state['processed_file_names'] = current_file_names
     
     return docs
 
@@ -200,13 +210,17 @@ def render_newsletter_ui():
         "Company docs (PDF, DOCX, TXT, MD)",
         accept_multiple_files=True,
         type=['pdf', 'docx', 'txt', 'md'],
-        help="Upload company documents for newsletter context"
+        help="Upload company documents for newsletter context",
+        key="newsletter_upload"
     )
     
-    # Document processing
+    # Document processing - check session state first
     all_docs = []
     if uploaded_files:
         all_docs = load_documents_from_uploads(uploaded_files)
+    elif 'processed_docs' in st.session_state:
+        # Use previously processed documents if no new files uploaded
+        all_docs = st.session_state['processed_docs']
 
     # Initialize RAG engine with uploaded documents
     rag_chain = load_rag_engine_with_docs(all_docs, temperature)
