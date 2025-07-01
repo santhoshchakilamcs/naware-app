@@ -24,18 +24,22 @@ except ImportError:
 load_dotenv()
 
 
-def load_documents_from_uploads(uploaded_files):
-    """Load documents from uploaded files and store in session state"""
+def load_documents_from_uploads(uploaded_files, storage_key="newsletter"):
+    """Load documents from uploaded files and store in session state with app-specific key"""
     docs = []
     
     if not uploaded_files:
         return docs
     
+    # Use app-specific storage keys
+    docs_key = f'processed_docs_{storage_key}'
+    names_key = f'processed_file_names_{storage_key}'
+    
     # Check if files are already processed in session state
     current_file_names = [f.name for f in uploaded_files]
-    if 'processed_docs' in st.session_state and 'processed_file_names' in st.session_state:
-        if st.session_state['processed_file_names'] == current_file_names:
-            return st.session_state['processed_docs']
+    if docs_key in st.session_state and names_key in st.session_state:
+        if st.session_state[names_key] == current_file_names:
+            return st.session_state[docs_key]
     
     for uploaded_file in uploaded_files:
         try:
@@ -68,9 +72,9 @@ def load_documents_from_uploads(uploaded_files):
             with st.sidebar:
                 st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
     
-    # Store processed documents in session state
-    st.session_state['processed_docs'] = docs
-    st.session_state['processed_file_names'] = current_file_names
+    # Store processed documents in session state with app-specific keys
+    st.session_state[docs_key] = docs
+    st.session_state[names_key] = current_file_names
     
     return docs
 
@@ -214,27 +218,28 @@ def render_newsletter_ui():
         key="newsletter_upload"
     )
     
-    # Show currently stored files
-    if 'processed_file_names' in st.session_state and st.session_state['processed_file_names']:
-        st.sidebar.subheader("📄 Stored Files")
-        for file_name in st.session_state['processed_file_names']:
+    # Show currently stored files for Newsletter
+    newsletter_docs_key = 'processed_file_names_newsletter'
+    if newsletter_docs_key in st.session_state and st.session_state[newsletter_docs_key]:
+        st.sidebar.subheader("📄 Newsletter Files")
+        for file_name in st.session_state[newsletter_docs_key]:
             st.sidebar.write(f"✅ {file_name}")
         
-        # Add clear button
-        if st.sidebar.button("🗑️ Clear All Files"):
-            if 'processed_docs' in st.session_state:
-                del st.session_state['processed_docs']
-            if 'processed_file_names' in st.session_state:
-                del st.session_state['processed_file_names']
+        # Add clear button for newsletter files
+        if st.sidebar.button("🗑️ Clear Newsletter Files"):
+            if 'processed_docs_newsletter' in st.session_state:
+                del st.session_state['processed_docs_newsletter']
+            if 'processed_file_names_newsletter' in st.session_state:
+                del st.session_state['processed_file_names_newsletter']
             st.rerun()
     
     # Document processing - check session state first
     all_docs = []
     if uploaded_files:
-        all_docs = load_documents_from_uploads(uploaded_files)
-    elif 'processed_docs' in st.session_state:
+        all_docs = load_documents_from_uploads(uploaded_files, "newsletter")
+    elif 'processed_docs_newsletter' in st.session_state:
         # Use previously processed documents if no new files uploaded
-        all_docs = st.session_state['processed_docs']
+        all_docs = st.session_state['processed_docs_newsletter']
 
     # Initialize RAG engine with uploaded documents
     rag_chain = load_rag_engine_with_docs(all_docs, temperature)
