@@ -214,6 +214,20 @@ def render_newsletter_ui():
         key="newsletter_upload"
     )
     
+    # Show currently stored files
+    if 'processed_file_names' in st.session_state and st.session_state['processed_file_names']:
+        st.sidebar.subheader("📄 Stored Files")
+        for file_name in st.session_state['processed_file_names']:
+            st.sidebar.write(f"✅ {file_name}")
+        
+        # Add clear button
+        if st.sidebar.button("🗑️ Clear All Files"):
+            if 'processed_docs' in st.session_state:
+                del st.session_state['processed_docs']
+            if 'processed_file_names' in st.session_state:
+                del st.session_state['processed_file_names']
+            st.rerun()
+    
     # Document processing - check session state first
     all_docs = []
     if uploaded_files:
