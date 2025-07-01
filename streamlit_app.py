@@ -148,7 +148,7 @@ st.markdown("""
 
 
 DEFAULTS = {
-    "OPENAI_API_KEY": st.secrets["OPENAI_API_KEY"],
+    "OPENAI_API_KEY": st.secrets.get(["OPENAI_API_KEY"]),
     "PIPEDRIVE_DOMAIN": st.secrets.get(["PIPEDRIVE_DOMAIN"], "Naware"),
     "PIPEDRIVE_API_TOKEN": st.secrets.get(["PIPEDRIVE_API_TOKEN"], "01f15a31881505c1271820bdb31b15d1041d6a26"),
     "SMTP_SERVER": st.secrets.get(["SMTP_SERVER"], "smtp.gmail.com"),
