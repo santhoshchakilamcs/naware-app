@@ -180,7 +180,7 @@ def load_rag_engine(path, temperature):
 
 def render_newsletter_ui():
     # Paths and constants
-    COMPANY_DOC = os.getenv("COMPANY_DOC", "./newsletter/")
+    COMPANY_DOC = st.secrets("COMPANY_DOC")
     LENGTH_MAP = {"Short": "150-200 words", "Medium": "300-400 words", "Long": "500-600 words"}
     STYLE_EXAMPLE = (
         "Roller-Coaster Highlights from the Week:\n"
