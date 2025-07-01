@@ -32,7 +32,8 @@ def load_documents_from_uploads(uploaded_files):
     if not uploaded_files:
         return docs
     
-    st.info(f"Processing {len(uploaded_files)} uploaded files...")
+    with st.sidebar:
+        st.info(f"Processing {len(uploaded_files)} uploaded files...")
     
     for uploaded_file in uploaded_files:
         try:
@@ -49,7 +50,8 @@ def load_documents_from_uploads(uploaded_files):
                     if result:
                         loaded_files.append(f"✅ {uploaded_file.name}")
                 else:
-                    st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
+                    with st.sidebar:
+                        st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
             
             elif uploaded_file.name.lower().endswith('.docx'):
                 result = load_docx_safe(tmp_path)
@@ -67,14 +69,17 @@ def load_documents_from_uploads(uploaded_files):
             os.unlink(tmp_path)
             
         except Exception as e:
-            st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+            with st.sidebar:
+                st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
     
     if loaded_files:
-        st.success(f"Successfully loaded {len(docs)} documents:")
-        for file in loaded_files:
-            st.write(file)
+        with st.sidebar:
+            st.success(f"Successfully loaded {len(docs)} documents:")
+            for file in loaded_files:
+                st.write(file)
     else:
-        st.warning("No documents could be loaded from uploads")
+        with st.sidebar:
+            st.warning("No documents could be loaded from uploads")
     
     return docs
 
@@ -90,7 +95,8 @@ def load_pdf_safe(file_path):
                 page_text = page.extract_text()
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
-                st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
 
         if text.strip():
             docs.append(LangchainDocument(
@@ -98,7 +104,8 @@ def load_pdf_safe(file_path):
                 metadata={"source": str(file_path), "type": "pdf"}
             ))
     except Exception as e:
-        st.error(f"Error reading PDF {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading PDF {Path(file_path).name}: {e}")
     return docs
 
 
@@ -115,7 +122,8 @@ def load_docx_safe(file_path):
                 metadata={"source": str(file_path), "type": "docx"}
             ))
     except Exception as e:
-        st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
     return docs
 
 
@@ -132,7 +140,8 @@ def load_text_safe(file_path):
                 metadata={"source": str(file_path), "type": "text"}
             ))
     except Exception as e:
-        st.error(f"Error reading text file {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading text file {Path(file_path).name}: {e}")
     return docs
 
 
@@ -140,7 +149,8 @@ def load_text_safe(file_path):
 def load_rag_engine_with_docs(_docs, temperature):
     """Load RAG engine with provided documents"""
     if not _docs:
-        st.warning("No documents provided. Using default knowledge base.")
+        with st.sidebar:
+            st.warning("No documents provided. Using default knowledge base.")
         # Create a simple LLM without retrieval
         return ChatOpenAI(
             model_name='gpt-4o-mini',
@@ -152,7 +162,8 @@ def load_rag_engine_with_docs(_docs, temperature):
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = splitter.split_documents(_docs)
 
-    st.info(f"Created {len(chunks)} text chunks for processing")
+    with st.sidebar:
+        st.info(f"Created {len(chunks)} text chunks for processing")
 
     try:
         # Create embeddings + vector store
@@ -172,11 +183,13 @@ def load_rag_engine_with_docs(_docs, temperature):
             retriever=vectorstore.as_retriever()
         )
 
-        st.success("✅ RAG engine loaded successfully with document context")
+        with st.sidebar:
+            st.success("✅ RAG engine loaded successfully with document context")
         return rag_chain
 
     except Exception as e:
-        st.error(f"Error creating RAG engine: {e}")
+        with st.sidebar:
+            st.error(f"Error creating RAG engine: {e}")
         # Fallback to simple LLM
         return ChatOpenAI(
             model_name='gpt-4o-mini',
@@ -219,9 +232,10 @@ def render_newsletter_ui():
         st.session_state['uploaded_docs'] = all_docs
     
     if all_docs:
-        st.success(f"Total documents loaded: {len(all_docs)}")
+        with st.sidebar:
+            st.success(f"📄 {len(all_docs)} documents loaded")
     else:
-        st.info("No documents uploaded. The AI will use general knowledge for newsletter generation.")
+        st.info("💡 Upload documents above to provide company context for newsletters.")
 
     # Sidebar settings
     st.sidebar.header("Configuration")
