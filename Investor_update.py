@@ -133,7 +133,7 @@ def render_investor_ui():
     openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
 
     # Paths and constants
-    COMPANY_DOC_PATH = os.getenv("COMPANY_DOC_PATH", "./Investor_Email/")
+    COMPANY_DOC_PATH = st.secrets("COMPANY_DOC_PATH")
     UPDATE_TYPES = ["Monthly Update", "Quarterly Update", "Milestone Update", "Board Update"]
     LENGTH_MAP = {"Brief": "200-300 words", "Standard": "400-600 words", "Detailed": "700-900 words"}
 
