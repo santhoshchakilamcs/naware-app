@@ -29,12 +29,9 @@ load_dotenv(dotenv_path=env_path)
 def load_documents_from_uploads(uploaded_files):
     """Load documents from uploaded files"""
     docs = []
-    loaded_files = []
     
     if not uploaded_files:
         return docs
-    
-    st.info(f"Processing {len(uploaded_files)} uploaded files...")
     
     for uploaded_file in uploaded_files:
         try:
@@ -48,81 +45,25 @@ def load_documents_from_uploads(uploaded_files):
                 if PDF_AVAILABLE:
                     result = load_pdf_safe(tmp_path)
                     docs.extend(result)
-                    if result:
-                        loaded_files.append(f"✅ {uploaded_file.name}")
                 else:
-                    st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
+                    with st.sidebar:
+                        st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
             
             elif uploaded_file.name.lower().endswith('.docx'):
                 result = load_docx_safe(tmp_path)
                 docs.extend(result)
-                if result:
-                    loaded_files.append(f"✅ {uploaded_file.name}")
             
             elif uploaded_file.name.lower().endswith(('.txt', '.md')):
                 result = load_text_safe(tmp_path)
                 docs.extend(result)
-                if result:
-                    loaded_files.append(f"✅ {uploaded_file.name}")
             
             # Clean up temp file
             os.unlink(tmp_path)
             
         except Exception as e:
-            st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+            with st.sidebar:
+                st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
     
-    if loaded_files:
-        st.success(f"Successfully loaded {len(docs)} documents:")
-        for file in loaded_files:
-            st.write(file)
-    else:
-        st.warning("No documents could be loaded from uploads")
-    
-    return docs
-
-
-def load_documents_safely(path):
-    """Load documents with robust error handling"""
-    docs = []
-
-    if not os.path.isdir(path):
-        st.warning(f"Directory {path} not found")
-        return docs
-
-    st.info(f"Loading documents from: {path}")
-    loaded_files = []
-
-    for file_path in Path(path).rglob('*'):
-        if file_path.is_file():
-            try:
-                if file_path.suffix.lower() == '.pdf':
-                    if PDF_AVAILABLE:
-                        result = load_pdf_safe(file_path)
-                        docs.extend(result)
-                        if result:
-                            loaded_files.append(f"✅ {file_path.name}")
-                    else:
-                        st.warning(f"⏭️ Skipping PDF {file_path.name} (PyPDF2 not installed)")
-                elif file_path.suffix.lower() == '.docx':
-                    result = load_docx_safe(file_path)
-                    docs.extend(result)
-                    if result:
-                        loaded_files.append(f"✅ {file_path.name}")
-                elif file_path.suffix.lower() in ['.txt', '.md']:
-                    result = load_text_safe(file_path)
-                    docs.extend(result)
-                    if result:
-                        loaded_files.append(f"✅ {file_path.name}")
-            except Exception as e:
-                st.warning(f"❌ Error loading {file_path.name}: {str(e)}")
-
-    if loaded_files:
-        st.success(f"Loaded {len(docs)} documents:")
-        for file in loaded_files:
-            st.write(file)
-    else:
-        st.warning("No documents could be loaded")
-
     return docs
 
 
@@ -137,7 +78,8 @@ def load_pdf_safe(file_path):
                 page_text = page.extract_text()
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
-                st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
+                with st.sidebar:
+                    st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
 
         if text.strip():
             docs.append(LangchainDocument(
@@ -145,7 +87,8 @@ def load_pdf_safe(file_path):
                 metadata={"source": str(file_path), "type": "pdf"}
             ))
     except Exception as e:
-        st.error(f"Error reading PDF {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading PDF {Path(file_path).name}: {e}")
     return docs
 
 
@@ -162,7 +105,8 @@ def load_docx_safe(file_path):
                 metadata={"source": str(file_path), "type": "docx"}
             ))
     except Exception as e:
-        st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
     return docs
 
 
@@ -179,36 +123,64 @@ def load_text_safe(file_path):
                 metadata={"source": str(file_path), "type": "text"}
             ))
     except Exception as e:
-        st.error(f"Error reading text file {Path(file_path).name}: {e}")
+        with st.sidebar:
+            st.error(f"Error reading text file {Path(file_path).name}: {e}")
     return docs
+
+
+@st.cache_resource
+def load_rag_engine_with_docs(_docs, temperature):
+    """Initialize RAG engine with provided documents"""
+    if not _docs:
+        # Create a simple LLM without retrieval
+        return ChatOpenAI(
+            model_name='gpt-4o-mini',
+            temperature=temperature,
+            api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+        )
+
+    # Split into chunks
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = splitter.split_documents(_docs)
+
+    try:
+        # Create embeddings + vector store
+        embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY"))
+        vectorstore = FAISS.from_documents(chunks, embeddings)
+
+        # Setup LLM and RetrievalQA
+        llm = ChatOpenAI(
+            model_name='gpt-4o-mini',
+            temperature=temperature,
+            api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+        )
+
+        rag_chain = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type='stuff',
+            retriever=vectorstore.as_retriever()
+        )
+
+        return rag_chain
+
+    except Exception as e:
+        with st.sidebar:
+            st.error(f"Error creating RAG engine: {e}")
+        # Fallback to simple LLM
+        return ChatOpenAI(
+            model_name='gpt-4o-mini',
+            temperature=temperature,
+            api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
+        )
 
 
 def render_investor_ui():
     # OpenAI key
     openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
-    # Constants - COMPANY_DOC_PATH is now used for file upload configuration
-    COMPANY_DOC_PATH = st.secrets.get("COMPANY_DOC_PATH", "Upload your company documents")
+    # Constants
     UPDATE_TYPES = ["Monthly Update", "Quarterly Update", "Milestone Update", "Board Update"]
     LENGTH_MAP = {"Brief": "200-300 words", "Standard": "400-600 words", "Detailed": "700-900 words"}
-
-    # Professional investor communication style
-    STYLE_EXAMPLE = """
-    Dear Investors,
-
-    I am pleased to provide you with our quarterly update on Naware's progress across key operational areas.
-
-    Product Development Progress:
-    Our engineering team has achieved significant milestones in AI detection accuracy, with our latest field tests demonstrating 87% precision in weed identification. This represents a 12% improvement over our previous iteration and positions us well within our target performance parameters.
-
-    Commercial Pipeline Development:
-    We continue to see strong market validation, with prospect meetings averaging 90 minutes as customers engage deeply with our value proposition. This extended engagement time indicates genuine interest and thorough evaluation of our solution.
-
-    Manufacturing and Operations:
-    We have secured manufacturing capacity for 500-1000 units, establishing the operational foundation necessary to meet projected demand in the coming quarters.
-
-    We remain confident in our trajectory and appreciate your continued support as we execute against our strategic objectives.
-    """
 
     # Comprehensive system prompt for Naware
     NAWARE_SYSTEM_PROMPT = """
@@ -243,80 +215,9 @@ def render_investor_ui():
     Write from the CEO's perspective providing transparent, professional updates to the investment community.
     """
 
-    # --- Document Upload Section ---
+    # --- Main UI ---
     st.title("📈 Naware Professional Investor Updates")
     st.markdown("Generate institutional-grade investor communications with comprehensive business metrics and professional formatting.")
-    
-    st.header("📁 Upload Company Documents")
-    st.markdown(f"**{COMPANY_DOC_PATH}**")
-    
-    uploaded_files = st.file_uploader(
-        "Choose company documents (PDF, DOCX, TXT, MD)",
-        accept_multiple_files=True,
-        type=['pdf', 'docx', 'txt', 'md'],
-        help="Upload internal documents, reports, meeting notes, or any company materials that should inform the investor update."
-    )
-    
-    # Document processing
-    all_docs = []
-    
-    if uploaded_files:
-        all_docs = load_documents_from_uploads(uploaded_files)
-        st.session_state['uploaded_docs'] = all_docs
-    
-    if all_docs:
-        st.success(f"Total documents loaded: {len(all_docs)}")
-    else:
-        st.info("No documents uploaded. The AI will use its general knowledge about startups and business communications.")
-
-    # --- RAG Engine Initialization ---
-    @st.cache_resource
-    def load_rag_engine_with_docs(docs, temperature):
-        """Initialize RAG engine with provided documents"""
-        if not docs:
-            st.warning("No documents provided. Using default knowledge base.")
-            # Create a simple LLM without retrieval
-            return ChatOpenAI(
-                model_name='gpt-4o-mini',
-                temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
-            )
-
-        # Split into chunks
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        chunks = splitter.split_documents(docs)
-
-        st.info(f"Created {len(chunks)} text chunks for processing")
-
-        try:
-            # Create embeddings + vector store
-            embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY"))
-            vectorstore = FAISS.from_documents(chunks, embeddings)
-
-            # Setup LLM and RetrievalQA
-            llm = ChatOpenAI(
-                model_name='gpt-4o-mini',
-                temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
-            )
-
-            rag_chain = RetrievalQA.from_chain_type(
-                llm=llm,
-                chain_type='stuff',
-                retriever=vectorstore.as_retriever()
-            )
-
-            st.success("✅ RAG engine loaded successfully with document context")
-            return rag_chain
-
-        except Exception as e:
-            st.error(f"Error creating RAG engine: {e}")
-            # Fallback to simple LLM
-            return ChatOpenAI(
-                model_name='gpt-4o-mini',
-                temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
-            )
 
     # --- Sidebar Configuration ---
     st.sidebar.header("⚙️ Configuration")
@@ -332,10 +233,23 @@ def render_investor_ui():
         include_financials = st.checkbox("Include Financial Summary", True)
         tone = st.selectbox("Tone", ["Optimistic", "Balanced", "Conservative"], index=0)
 
-    # Initialize RAG engine with uploaded documents only
+    # --- Document Upload in Sidebar ---
+    st.sidebar.header("📁 Upload Documents")
+    uploaded_files = st.sidebar.file_uploader(
+        "Company docs (PDF, DOCX, TXT, MD)",
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'txt', 'md'],
+        help="Upload company documents for investor update context"
+    )
+    
+    # Document processing
+    all_docs = []
+    if uploaded_files:
+        all_docs = load_documents_from_uploads(uploaded_files)
+
+    # Initialize RAG engine with uploaded documents
     try:
         rag_chain = load_rag_engine_with_docs(all_docs, temperature)
-        st.sidebar.success("✅ RAG Engine Loaded")
     except Exception as e:
         st.sidebar.error(f"❌ RAG Engine Error: {e}")
         rag_chain = None
