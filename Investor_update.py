@@ -392,6 +392,9 @@ def render_investor_ui():
                 # Extract text content from result
                 if isinstance(result, dict):
                     result_text = result.get('result', '') or result.get('answer', '') or str(result)
+                elif hasattr(result, 'content'):
+                    # Handle LangChain response object with content attribute
+                    result_text = result.content
                 else:
                     result_text = str(result)
 
