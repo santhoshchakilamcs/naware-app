@@ -95,8 +95,8 @@ def load_pdf_safe(file_path):
                 page_text = page.extract_text()
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
-        with st.sidebar:
-            st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
+                with st.sidebar:
+                    st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
 
         if text.strip():
             docs.append(LangchainDocument(
