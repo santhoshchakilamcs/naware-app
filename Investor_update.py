@@ -201,7 +201,7 @@ def render_investor_ui():
             return ChatOpenAI(
                 model_name='gpt-4o-mini',
                 temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY")
+                api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
             )
 
         # Split into chunks
@@ -212,7 +212,7 @@ def render_investor_ui():
 
         try:
             # Create embeddings + vector store
-            embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"))
+            embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"])
             vectorstore = FAISS.from_documents(chunks, embeddings)
 
             # Setup LLM and RetrievalQA
