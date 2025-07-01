@@ -244,40 +244,40 @@ def render_newsletter_ui():
     # Initialize RAG engine with uploaded documents
     rag_chain = load_rag_engine_with_docs(all_docs, temperature)
 
-    # Topic entry management
-    if 'topics' not in st.session_state:
-        st.session_state['topics'] = []
+    # Topic entry management - Newsletter specific
+    if 'newsletter_topics' not in st.session_state:
+        st.session_state['newsletter_topics'] = []
 
     st.header("Newsletter Topics")
-    with st.form(key='topic_form', clear_on_submit=True):
+    with st.form(key='newsletter_topic_form', clear_on_submit=True):
         new_topic = st.text_input("Enter a topic")
         if st.form_submit_button("Add Topic") and new_topic.strip():
-            st.session_state['topics'].append(new_topic.strip())
+            st.session_state['newsletter_topics'].append(new_topic.strip())
 
     # Display current topics with edit capability
-    if st.session_state['topics']:
+    if st.session_state['newsletter_topics']:
         st.subheader("Current Topics:")
-        for idx, topic in enumerate(st.session_state['topics']):
+        for idx, topic in enumerate(st.session_state['newsletter_topics']):
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.session_state['topics'][idx] = st.text_input(f"Topic {idx + 1}", value=topic, key=f"topic_{idx}").strip()
+                st.session_state['newsletter_topics'][idx] = st.text_input(f"Topic {idx + 1}", value=topic, key=f"newsletter_topic_{idx}").strip()
             with col2:
                 st.write("")
                 st.write("")
-                if st.button("🗑️", key=f"delete_{idx}"):
-                    st.session_state['topics'].pop(idx)
+                if st.button("🗑️", key=f"newsletter_delete_{idx}"):
+                    st.session_state['newsletter_topics'].pop(idx)
                     st.rerun()
 
     # Generate action
     def on_generate():
-        if not st.session_state['topics']:
+        if not st.session_state['newsletter_topics']:
             st.error("Please add at least one topic.")
             return
 
         st.info("Generating newsletter content...")
         all_topics = []
 
-        for topic in st.session_state['topics']:
+        for topic in st.session_state['newsletter_topics']:
             prompt = (
                 f"You are a newsletter writer for {company_name}. "
                 f"Write a {LENGTH_MAP[article_length]} newsletter article about '{topic}' in a lighthearted, humorous tone, "
@@ -326,12 +326,19 @@ def render_newsletter_ui():
         with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp:
             doc.save(tmp.name)
             with open(tmp.name, 'rb') as file:
-                st.download_button(
-                    "📥 Download as DOCX",
-                    data=file.read(),
-                    file_name=f"{company_name.replace(' ', '_')}_Newsletter_{newsletter_date.strftime('%Y-%m-%d')}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+                file_data = file.read()
+                
+        # Provide download button
+        download_clicked = st.download_button(
+            "📥 Download as DOCX",
+            data=file_data,
+            file_name=f"{company_name.replace(' ', '_')}_Newsletter_{newsletter_date.strftime('%Y-%m-%d')}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        # Clear topics after download
+        if download_clicked:
+            st.session_state['newsletter_topics'] = []
 
         st.success("Newsletter generated! Download your DOCX above.")
         st.markdown("### Preview")
@@ -343,7 +350,7 @@ def render_newsletter_ui():
             st.write("---")
 
         # Clear topics after successful generation
-        st.session_state['topics'] = []
+        st.session_state['newsletter_topics'] = []
 
     if st.button("Generate Newsletter", type="primary"):
         on_generate()
