@@ -286,7 +286,7 @@ def render_newsletter_ui():
 
             try:
                 if hasattr(rag_chain, 'invoke'):
-                    result = rag_chain.invoke({"query": prompt})
+                    result = rag_chain.invoke(prompt)  # Pass string directly, not dict
                 elif hasattr(rag_chain, 'run'):
                     result = rag_chain.run(prompt)
                 else:
