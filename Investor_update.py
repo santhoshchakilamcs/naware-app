@@ -130,10 +130,10 @@ def load_text_safe(file_path):
 
 def render_investor_ui():
     # OpenAI key
-    openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+    openai.api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
 
     # Paths and constants
-    COMPANY_DOC_PATH = st.secrets("COMPANY_DOC_PATH")
+    COMPANY_DOC_PATH = st.secrets.get("COMPANY_DOC_PATH")
     UPDATE_TYPES = ["Monthly Update", "Quarterly Update", "Milestone Update", "Board Update"]
     LENGTH_MAP = {"Brief": "200-300 words", "Standard": "400-600 words", "Detailed": "700-900 words"}
 
@@ -201,7 +201,7 @@ def render_investor_ui():
             return ChatOpenAI(
                 model_name='gpt-4o-mini',
                 temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
             )
 
         # Split into chunks
@@ -212,14 +212,14 @@ def render_investor_ui():
 
         try:
             # Create embeddings + vector store
-            embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"])
+            embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY"))
             vectorstore = FAISS.from_documents(chunks, embeddings)
 
             # Setup LLM and RetrievalQA
             llm = ChatOpenAI(
                 model_name='gpt-4o-mini',
                 temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
             )
 
             rag_chain = RetrievalQA.from_chain_type(
@@ -237,7 +237,7 @@ def render_investor_ui():
             return ChatOpenAI(
                 model_name='gpt-4o-mini',
                 temperature=temperature,
-                api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+                api_key=os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY")
             )
 
     # --- Sidebar Configuration ---
