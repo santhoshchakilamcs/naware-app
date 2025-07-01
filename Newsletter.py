@@ -137,9 +137,9 @@ def load_text_safe(file_path):
 
 
 @st.cache_resource
-def load_rag_engine_with_docs(docs, temperature):
+def load_rag_engine_with_docs(_docs, temperature):
     """Load RAG engine with provided documents"""
-    if not docs:
+    if not _docs:
         st.warning("No documents provided. Using default knowledge base.")
         # Create a simple LLM without retrieval
         return ChatOpenAI(
@@ -150,7 +150,7 @@ def load_rag_engine_with_docs(docs, temperature):
 
     # Split into chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    chunks = splitter.split_documents(docs)
+    chunks = splitter.split_documents(_docs)
 
     st.info(f"Created {len(chunks)} text chunks for processing")
 
