@@ -186,8 +186,8 @@ st.sidebar.markdown("""
 app_choice = st.sidebar.selectbox(
     "Choose an application:",
     [
-        "📊 Investor Update",
         "📰 Newsletter Generator",
+        "📊 Investor Update", 
         "📧 Demo Follow-Up Emails"
     ]
 )
@@ -206,11 +206,11 @@ st.sidebar.markdown("""
 
 # ─── DISPATCH ────────────────────────────────────────────────────────────────
 try:
-    if app_choice == "📊 Investor Update":
-        render_investor_ui()
-
-    elif app_choice == "📰 Newsletter Generator":
+    if app_choice == "📰 Newsletter Generator":
         render_newsletter_ui()
+
+    elif app_choice == "📊 Investor Update":
+        render_investor_ui()
 
     elif app_choice == "📧 Demo Follow-Up Emails":
         render_followup_ui()
