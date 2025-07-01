@@ -24,48 +24,58 @@ except ImportError:
 load_dotenv()
 
 
-def load_documents_safely(path):
-    """Load documents with robust error handling"""
+def load_documents_from_uploads(uploaded_files):
+    """Load documents from uploaded files"""
     docs = []
-
-    if not os.path.isdir(path):
-        st.warning(f"Directory {path} not found")
-        return docs
-
-    st.info(f"Loading documents from: {path}")
     loaded_files = []
-
-    for file_path in Path(path).rglob('*'):
-        if file_path.is_file():
-            try:
-                if file_path.suffix.lower() == '.pdf':
-                    if PDF_AVAILABLE:
-                        result = load_pdf_safe(file_path)
-                        docs.extend(result)
-                        if result:
-                            loaded_files.append(f"✅ {file_path.name}")
-                    else:
-                        st.warning(f"⏭️ Skipping PDF {file_path.name} (PyPDF2 not installed)")
-                elif file_path.suffix.lower() == '.docx':
-                    result = load_docx_safe(file_path)
+    
+    if not uploaded_files:
+        return docs
+    
+    st.info(f"Processing {len(uploaded_files)} uploaded files...")
+    
+    for uploaded_file in uploaded_files:
+        try:
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as tmp:
+                tmp.write(uploaded_file.read())
+                tmp_path = tmp.name
+            
+            # Process based on file type
+            if uploaded_file.name.lower().endswith('.pdf'):
+                if PDF_AVAILABLE:
+                    result = load_pdf_safe(tmp_path)
                     docs.extend(result)
                     if result:
-                        loaded_files.append(f"✅ {file_path.name}")
-                elif file_path.suffix.lower() in ['.txt', '.md']:
-                    result = load_text_safe(file_path)
-                    docs.extend(result)
-                    if result:
-                        loaded_files.append(f"✅ {file_path.name}")
-            except Exception as e:
-                st.warning(f"❌ Error loading {file_path.name}: {str(e)}")
-
+                        loaded_files.append(f"✅ {uploaded_file.name}")
+                else:
+                    st.warning(f"⏭️ Skipping PDF {uploaded_file.name} (PyPDF2 not installed)")
+            
+            elif uploaded_file.name.lower().endswith('.docx'):
+                result = load_docx_safe(tmp_path)
+                docs.extend(result)
+                if result:
+                    loaded_files.append(f"✅ {uploaded_file.name}")
+            
+            elif uploaded_file.name.lower().endswith(('.txt', '.md')):
+                result = load_text_safe(tmp_path)
+                docs.extend(result)
+                if result:
+                    loaded_files.append(f"✅ {uploaded_file.name}")
+            
+            # Clean up temp file
+            os.unlink(tmp_path)
+            
+        except Exception as e:
+            st.warning(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+    
     if loaded_files:
-        st.success(f"Loaded {len(docs)} documents:")
+        st.success(f"Successfully loaded {len(docs)} documents:")
         for file in loaded_files:
             st.write(file)
     else:
-        st.warning("No documents could be loaded")
-
+        st.warning("No documents could be loaded from uploads")
+    
     return docs
 
 
@@ -80,7 +90,7 @@ def load_pdf_safe(file_path):
                 page_text = page.extract_text()
                 text += f"\n--- Page {page_num + 1} ---\n{page_text}\n"
             except Exception as e:
-                st.warning(f"Error reading page {page_num + 1} of {file_path.name}: {e}")
+                st.warning(f"Error reading page {page_num + 1} of {Path(file_path).name}: {e}")
 
         if text.strip():
             docs.append(LangchainDocument(
@@ -88,7 +98,7 @@ def load_pdf_safe(file_path):
                 metadata={"source": str(file_path), "type": "pdf"}
             ))
     except Exception as e:
-        st.error(f"Error reading PDF {file_path.name}: {e}")
+        st.error(f"Error reading PDF {Path(file_path).name}: {e}")
     return docs
 
 
@@ -105,7 +115,7 @@ def load_docx_safe(file_path):
                 metadata={"source": str(file_path), "type": "docx"}
             ))
     except Exception as e:
-        st.error(f"Error reading DOCX {file_path.name}: {e}")
+        st.error(f"Error reading DOCX {Path(file_path).name}: {e}")
     return docs
 
 
@@ -122,23 +132,20 @@ def load_text_safe(file_path):
                 metadata={"source": str(file_path), "type": "text"}
             ))
     except Exception as e:
-        st.error(f"Error reading text file {file_path.name}: {e}")
+        st.error(f"Error reading text file {Path(file_path).name}: {e}")
     return docs
 
 
 @st.cache_resource
-def load_rag_engine(path, temperature):
-    """Load RAG engine with improved error handling"""
-    # Load documents safely
-    docs = load_documents_safely(path)
-
+def load_rag_engine_with_docs(docs, temperature):
+    """Load RAG engine with provided documents"""
     if not docs:
-        st.warning("No documents loaded. Using default knowledge base.")
+        st.warning("No documents provided. Using default knowledge base.")
         # Create a simple LLM without retrieval
         return ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+            openai_api_key=st.secrets.get("OPENAI_API_KEY")
         )
 
     # Split into chunks
@@ -149,14 +156,14 @@ def load_rag_engine(path, temperature):
 
     try:
         # Create embeddings + vector store
-        embeddings = OpenAIEmbeddings(openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"])
+        embeddings = OpenAIEmbeddings(openai_api_key=st.secrets.get("OPENAI_API_KEY"))
         vectorstore = FAISS.from_documents(chunks, embeddings)
 
         # Setup LLM and RetrievalQA
         llm = ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+            openai_api_key=st.secrets.get("OPENAI_API_KEY")
         )
 
         rag_chain = RetrievalQA.from_chain_type(
@@ -174,13 +181,13 @@ def load_rag_engine(path, temperature):
         return ChatOpenAI(
             model_name='gpt-4o-mini',
             temperature=temperature,
-            openai_api_key=os.getenv("OPENAI_API_KEY") or st.secrets("OPENAI_API_KEY")
+            openai_api_key=st.secrets.get("OPENAI_API_KEY")
         )
 
 
 def render_newsletter_ui():
-    # Paths and constants
-    COMPANY_DOC = st.secrets("COMPANY_DOC")
+    # Constants - COMPANY_DOC is now used for file upload configuration
+    COMPANY_DOC = st.secrets.get("COMPANY_DOC", "Upload your company documents for newsletter context")
     LENGTH_MAP = {"Short": "150-200 words", "Medium": "300-400 words", "Long": "500-600 words"}
     STYLE_EXAMPLE = (
         "Roller-Coaster Highlights from the Week:\n"
@@ -189,6 +196,33 @@ def render_newsletter_ui():
         ":chipmunk: Field Testing Adventures: Let's just say..."
     )
 
+    # --- Main UI ---
+    st.title("📰 Naware Newsletter Generator")
+    st.markdown("Generate context-rich, humorous newsletters using your company docs and OpenAI.")
+
+    # --- Document Upload Section ---
+    st.header("📁 Upload Company Documents")
+    st.markdown(f"**{COMPANY_DOC}**")
+    
+    uploaded_files = st.file_uploader(
+        "Choose company documents (PDF, DOCX, TXT, MD)",
+        accept_multiple_files=True,
+        type=['pdf', 'docx', 'txt', 'md'],
+        help="Upload company documents, meeting notes, or reports to provide context for newsletter generation."
+    )
+    
+    # Document processing
+    all_docs = []
+    
+    if uploaded_files:
+        all_docs = load_documents_from_uploads(uploaded_files)
+        st.session_state['uploaded_docs'] = all_docs
+    
+    if all_docs:
+        st.success(f"Total documents loaded: {len(all_docs)}")
+    else:
+        st.info("No documents uploaded. The AI will use general knowledge for newsletter generation.")
+
     # Sidebar settings
     st.sidebar.header("Configuration")
     temperature = st.sidebar.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
@@ -196,12 +230,8 @@ def render_newsletter_ui():
     company_name = st.sidebar.text_input("Company Name", "Naware")
     newsletter_date = st.sidebar.date_input("Newsletter Date", datetime.now())
 
-    # Initialize RAG engine once
-    rag_chain = load_rag_engine(COMPANY_DOC, temperature)
-
-    # --- Main UI ---
-    st.title("📰 Naware Newsletter Generator")
-    st.markdown("Generate context-rich, humorous newsletters using your company docs and OpenAI.")
+    # Initialize RAG engine with uploaded documents
+    rag_chain = load_rag_engine_with_docs(all_docs, temperature)
 
     # Topic entry management
     if 'topics' not in st.session_state:
