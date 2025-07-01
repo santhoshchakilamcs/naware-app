@@ -148,14 +148,14 @@ st.markdown("""
 
 
 DEFAULTS = {
-    "OPENAI_API_KEY": st.secrets.get(["OPENAI_API_KEY"]),
-    "PIPEDRIVE_DOMAIN": st.secrets.get(["PIPEDRIVE_DOMAIN"], "Naware"),
-    "PIPEDRIVE_API_TOKEN": st.secrets.get(["PIPEDRIVE_API_TOKEN"], "01f15a31881505c1271820bdb31b15d1041d6a26"),
-    "SMTP_SERVER": st.secrets.get(["SMTP_SERVER"], "smtp.gmail.com"),
-    "SMTP_PORT": st.secrets.get(["SMTP_PORT"], "587"),
-    "EMAIL_USERNAME": st.secrets.get(["EMAIL_USERNAME"], "santhosh@naware.io"),
-    "EMAIL_PASSWORD": st.secrets.get(["EMAIL_PASSWORD"], "nkwk bwfk jhop"),
-    "EMAIL_SENDER_NAME": st.secrets.get(["EMAIL_SENDER_NAME"], "Team Naware"),
+    "OPENAI_API_KEY": st.secrets.get("OPENAI_API_KEY"),
+    "PIPEDRIVE_DOMAIN": st.secrets.get("PIPEDRIVE_DOMAIN", "Naware"),
+    "PIPEDRIVE_API_TOKEN": st.secrets.get("PIPEDRIVE_API_TOKEN"),
+    "SMTP_SERVER": st.secrets.get("SMTP_SERVER", "smtp.gmail.com"),
+    "SMTP_PORT": st.secrets.get("SMTP_PORT", "587"),
+    "EMAIL_USERNAME": st.secrets.get("EMAIL_USERNAME"),
+    "EMAIL_PASSWORD": st.secrets.get("EMAIL_PASSWORD"),
+    "EMAIL_SENDER_NAME": st.secrets.get("EMAIL_SENDER_NAME", "Team Naware"),
     "selected_model": "gpt-4o-mini",
 }
 
