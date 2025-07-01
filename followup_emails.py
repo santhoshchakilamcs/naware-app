@@ -75,14 +75,14 @@ def render_followup_ui():
     def gen_email(name, org, date, cta, product):
         date_str = date.strftime("%B %d, %Y")
         prompt = (
-            f"SYSTEM: You are a professional sales engineer at Naware, makers of the "Wipe All Weedrupter," an innovative steam-based, AI-driven weed control solution.\n\n"
+            f"SYSTEM: You are a professional sales engineer at Naware, makers of the 'Wipe All Weedrupter,' an innovative steam-based, AI-driven weed control solution.\n\n"
             f"USER: Write a warm, multi-paragraph thank-you email to {name} at {org} for attending our demo of {product} on {date_str}. Be sure to:\n"
             f"  . Do not include a subject line in the email body.\n"
             f"  • Express genuine appreciation for their time and thoughtful questions during the demo.\n"
             f"  • Highlight their role/industry and why their feedback matters to us as early adopters.\n"
             f"  • Invite them to share any photos or notes they took—this helps us tailor future improvements.\n"
             f"  • Clearly outline next steps, including a single call-to-action link to schedule a follow-up discussion: {cta}\n"
-            f"  • Reinforce our "fail fast, learn fast" philosophy and our commitment to close collaboration.\n"
+            f"  • Reinforce our 'fail fast, learn fast' philosophy and our commitment to close collaboration.\n"
             f"  • Sign off warmly as {st.session_state.email_sender_name}, optionally adding a P.S. with a quick tip or resource relevant to their use case.\n\n"
             f"Return just the email body (no subject line) in plain text."
         )
